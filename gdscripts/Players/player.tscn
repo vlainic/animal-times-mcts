@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3 uid="uid://ce5si507nal07"]
+
+[ext_resource type="Script" path="res://Players/player.gd" id="1_8x2v9"]
+
+[node name="Player" type="Node2D"]
+script = ExtResource("1_8x2v9")
+
+[node name="Avatar" type="Node2D" parent="."]
+
+[node name="Cards" type="Node2D" parent="."]
+
+[node name="MetaData" type="Node" parent="."]
+metadata/player_id = 0
+metadata/player_color = ""

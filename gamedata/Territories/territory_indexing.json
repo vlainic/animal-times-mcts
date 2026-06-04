@@ -1,0 +1,44 @@
+{
+    "Frozen Mud": 0,
+    "Mud Hills": 1,
+    "Inner Mud": 2,
+    "Muddy Island": 3,
+    "Muddy Coast": 4,
+    "Dark Mud": 5,
+    
+    "Bamboo Ridge": 6,
+    "Bamboo Forest": 7,
+    "Bamboo Mist": 8,
+    "Outer Bamboo": 9,
+    "Bamboo Valley": 10,
+    "Bamboo Beach": 11,
+    "Sacred Bamboo": 12,
+    "Wild Bamboo": 13,
+    
+    "Thorn Bush": 14,
+    "Sun Hollow": 15,
+    "Dry Basin": 16,
+    "Inner Bush": 17,
+    "The Lookout": 18,
+    "Wind Plains": 19,
+    "Bush Island": 20,
+    
+    "Cold River": 21,
+    "Clear River": 22,
+    "Main River": 23,
+    "River Falls": 24,
+    "The Delta": 25,
+    "Stone Bridge": 26,
+    "Beaver Dam": 27,
+    
+    "Stone Peak": 28,
+    "High Peak": 29,
+    "High Valley": 30,
+    "Central Peak": 31,
+    "Wind Ridge": 32,
+    
+    "Tree Island": 33,
+    "Deep Forest": 34,
+    "Crown Forest": 35,
+    "Old Trees": 36
+}

@@ -1,0 +1,11 @@
+# Animal Times Demo - Project Brief
+
+- Core: Risk-like strategy game built in Godot 4.3 using GDScript.
+- Game Loop: Turn-based with phases: REINFORCE → ATTACK → DEPLOY → FORTIFY → (next player) → GAME_OVER.
+- Combat: Subtraction-based damage, overruns (carry momentum), Attack of Despair support.
+- Players: Human + multiple bot types (Rookie, Chaotic). Server-authoritative logic.
+- Objectives: Missions (conquest, elimination, special), elimination rewards, turn queue management. **Elimination** on HUD: one-line **Eliminate {Animal}.** + rules in **`HUD/tooltip.tscn`** (see `MissionTooltipAnchor` in `mission_display.tscn`). **DEPLOY**: humans can **UNDO** last manual bonus placement while pending remain (not timer auto-deploys; not after final placement). **Event log**: combat-focused feed under MissionDisplay; server pushes segments; same-tick majors (e.g. continent) appear **newer than** the combat line (push order matches `push_front` newest-at-top).
+- Priorities: Correct phase/turn order, deterministic multiplayer-ready flow, per-phase timers with clear UI (compass + counter), minimal refactors, strong debug when needed.
+- Lobby: ENet (simple_lobby) and Steam (steam_lobby); full lobby state clear on host leave via reset_lobby_state in both managers; Steam lobby callbacks wired when Steam init (Option A). MP 2-player start: mandatory Bot dropdown (Greedy Boy default); one bot injected and synced to all peers; human leaver replaced by bot with sync_all_players so guest sees bot avatar/color.
+- Victory: Human-only Last Man Standing (game over and LPS count humans via is_bot); LPS guarded by Server.GAME_OVER and (planned) victory popup visibility.
+- **Offline Python sim** (optional): `Python/mcts_train/` mirrors core rules for MCTS/RL experiments; does not ship with the game. Internal OS-entropy RNG split on ``GameState`` (cards / dice / policy); smoke script supports mixed bot **``--bots``** pattern (e.g. `1222`).

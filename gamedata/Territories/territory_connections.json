@@ -1,0 +1,44 @@
+{
+    "Frozen Mud": ["Mud Hills", "Inner Mud"],
+    "Mud Hills": ["Frozen Mud", "Inner Mud", "Muddy Coast", "The Delta"],
+    "Inner Mud": ["Frozen Mud", "Mud Hills", "Muddy Island", "Muddy Coast", "Dark Mud"],
+    "Muddy Island": ["Inner Mud", "Dark Mud", "Bamboo Ridge"],
+    "Muddy Coast": ["Mud Hills", "Inner Mud", "Dark Mud", "Sun Hollow", "Thorn Bush"],
+    "Dark Mud": ["Inner Mud", "Muddy Island", "Muddy Coast", "Sun Hollow"],
+    
+    "Bamboo Ridge": ["Bamboo Forest", "Sacred Bamboo", "Wild Bamboo", "Muddy Island"],
+    "Bamboo Forest": ["Bamboo Ridge", "Bamboo Mist", "Bamboo Valley", "Sacred Bamboo"],
+    "Bamboo Mist": ["Bamboo Forest", "Outer Bamboo", "Bamboo Valley"],
+    "Outer Bamboo": ["Bamboo Mist", "Bamboo Valley", "Cold River"],
+    "Bamboo Valley": ["Bamboo Forest", "Bamboo Mist", "Outer Bamboo", "Bamboo Beach", "Sacred Bamboo"],
+    "Bamboo Beach": ["Bamboo Valley", "Sacred Bamboo"],
+    "Sacred Bamboo": ["Bamboo Ridge", "Bamboo Forest", "Bamboo Valley", "Bamboo Beach", "Wild Bamboo"],
+    "Wild Bamboo": ["Bamboo Ridge", "Sacred Bamboo", "Tree Island"],
+    
+    "Thorn Bush": ["Sun Hollow", "Dry Basin", "Muddy Coast"],
+    "Sun Hollow": ["Thorn Bush", "Dry Basin", "Inner Bush", "Muddy Coast", "Dark Mud"], 
+    "Dry Basin": ["Thorn Bush", "Sun Hollow", "Inner Bush", "The Lookout"],
+    "Inner Bush": ["Sun Hollow", "Dry Basin", "The Lookout", "Wind Plains", "Bush Island"],
+    "The Lookout": ["Dry Basin", "Inner Bush", "Wind Plains"],
+    "Wind Plains": ["Inner Bush", "The Lookout", "Bush Island"],
+    "Bush Island": ["Inner Bush", "Wind Plains", "Old Trees"],
+    
+    "Cold River": ["Clear River", "Main River", "Outer Bamboo"],
+    "Clear River": ["Cold River","Main River", "River Falls", "The Delta"],
+    "Main River": ["Cold River", "Clear River", "River Falls", "Stone Bridge", "Beaver Dam"],
+    "River Falls": ["Clear River", "Main River", "The Delta", "Beaver Dam"],
+    "The Delta": ["Clear River", "River Falls", "Beaver Dam", "Mud Hills"],
+    "Stone Bridge": ["Main River", "Beaver Dam", "Stone Peak"],
+    "Beaver Dam": ["Main River", "River Falls", "The Delta", "Stone Bridge"],
+    
+    "Stone Peak": ["High Peak", "Central Peak", "Stone Bridge"],
+    "High Peak": ["Stone Peak", "High Valley", "Central Peak"],
+    "High Valley": ["High Peak", "Central Peak", "Wind Ridge"],
+    "Central Peak": ["Stone Peak", "High Peak", "High Valley", "Wind Ridge"],
+    "Wind Ridge": ["High Valley", "Central Peak"],
+    
+    "Tree Island": ["Deep Forest", "Crown Forest", "Wild Bamboo"],
+    "Deep Forest": ["Tree Island", "Crown Forest", "Old Trees"],
+    "Crown Forest": ["Tree Island", "Deep Forest"],
+    "Old Trees": ["Deep Forest", "Bush Island"]
+}

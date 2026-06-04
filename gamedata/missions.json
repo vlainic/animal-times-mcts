@@ -1,0 +1,122 @@
+{
+    "conquest": [
+        {
+            "id": "cMEP",
+            "title": "Conquest Mission",
+            "description": "Conquer Mudflats, Eucalypta and Peaks.",
+            "continents": ["Mudflats", "Eucalypta", "Peaks"]
+        },
+        {
+            "id": "cMR",
+            "title": "Conquest Mission",
+            "description": "Conquer Mudflats and Riverside.",
+            "continents": ["Mudflats", "Riverside"]
+        },
+        {
+            "id": "cMBa",
+            "title": "Conquest Mission",
+            "description": "Conquer Mudflats and Bamboovia.",
+            "continents": ["Mudflats", "Bamboovia"]
+        },
+        {
+            "id": "cBuB",
+            "title": "Conquest Mission",
+            "description": "Conquer Bushlands and Bamboovia.",
+            "continents": ["Bushlands", "Bamboovia"]
+        },
+        {
+            "id": "cBuR",
+            "title": "Conquest Mission",
+            "description": "Conquer Bushlands and Riverside.",
+            "continents": ["Bushlands", "Riverside"]
+        },
+        {
+            "id": "cBuP",
+            "title": "Conquest Mission",
+            "description": "Conquer Bushlands and Peaks.",
+            "continents": ["Bushlands", "Peaks"]
+        },
+        {
+            "id": "cBaP",
+            "title": "Conquest Mission",
+            "description": "Conquer Bamboovia and Peaks.",
+            "continents": ["Bamboovia", "Peaks"]
+        },
+        {
+            "id": "cER",
+            "title": "Conquest Mission",
+            "description": "Conquer Eucalypta and Riverside.",
+            "continents": ["Eucalypta", "Riverside"]
+        },
+        {
+            "id": "cEP",
+            "title": "Conquest Mission",
+            "description": "Conquer Eucalypta, Peaks and one more continent of a choice.",
+            "continents": ["Eucalypta", "Peaks"],
+            "any_third": true
+        }
+    ],
+    "elimination": [
+        {
+            "id": "eBeaver",
+            "title": "Elimination Mission",
+            "description": "Eliminate Beaver. If Beaver is eliminated by another player, that player becomes your new target. This continues until you eliminate your current target or capture 20 territories.",
+            "target_animal": "beaver",
+            "fallback_territories": 20
+        },
+        {
+            "id": "eKoala",
+            "title": "Elimination Mission",
+            "description": "Eliminate Koala. If Koala is eliminated by another player, that player becomes your new target. This continues until you eliminate your current target or capture 20 territories.",
+            "target_animal": "koala",
+            "fallback_territories": 20,
+            "is_first_target": true
+        },
+        {
+            "id": "eLlama",
+            "title": "Elimination Mission",
+            "description": "Eliminate Llama. If Llama is eliminated by another player, that player becomes your new target. This continues until you eliminate your current target or capture 20 territories.",
+            "target_animal": "llama",
+            "fallback_territories": 20,
+            "is_first_target": true
+        },
+        {
+            "id": "eMeerkat",
+            "title": "Elimination Mission",
+            "description": "Eliminate Meerkat. If Meerkat is eliminated by another player, that player becomes your new target. This continues until you eliminate your current target or capture 20 territories.",
+            "target_animal": "meerkat",
+            "fallback_territories": 20,
+            "is_first_target": true
+        },
+        {
+            "id": "ePanda",
+            "title": "Elimination Mission",
+            "description": "Eliminate Panda. If Panda is eliminated by another player, that player becomes your new target. This continues until you eliminate your current target or capture 20 territories.",
+            "target_animal": "panda",
+            "fallback_territories": 20,
+            "is_first_target": true
+        },
+        {
+            "id": "ePig",
+            "title": "Elimination Mission",
+            "description": "Eliminate Pig. If Pig is eliminated by another player, that player becomes your new target. This continues until you eliminate your current target or capture 20 territories.",
+            "target_animal": "pig",
+            "fallback_territories": 20,
+            "is_first_target": true
+        }
+    ],
+    "special": [
+        {
+            "id": "sLands",
+            "title": "Lands Mission",
+            "description": "Capture 20 territories.",
+            "territory_count": 20
+        },
+        {
+            "id": "sTriple",
+            "title": "Triple Mission",
+            "description": "Capture 3 continents of a choice.",
+            "continent_count": 3
+        }
+    ]
+}

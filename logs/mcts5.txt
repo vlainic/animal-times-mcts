@@ -1,0 +1,635 @@
+[ATTACK_PICK] seat=0 score=0.308 key=(5,2,1,0) att=Stone Bridge def=Beaver Dam
+[COMBAT] Stone Bridge (beaver) vs Beaver Dam (koala) dice att[3,3,3] def[5,2] units 6->4 / 2->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=0 stale_turns=1 seat=0(beaver) tiles=8 legal_attackers=8 opts=0 units={"Frozen Mud":2,"Muddy Coast":4,"Bamboo Ridge":2,"Bamboo Mist":2,"Wild Bamboo":2,"The Lookout":4,"Main River":4,"Stone Bridge":4}
+[STALE_OPTS] step=0 stale_turns=1 seat=1(koala) tiles=8 legal_attackers=6 opts=0 units={"Mud Hills":3,"Inner Mud":3,"Sun Hollow":3,"Wind Plains":3,"Clear River":3,"River Falls":3,"Beaver Dam":1,"Central Peak":1}
+[STALE_OPTS] step=0 stale_turns=1 seat=2(llama) tiles=7 legal_attackers=7 opts=0 units={"Muddy Island":4,"Dark Mud":3,"Bamboo Beach":4,"Dry Basin":3,"Cold River":5,"Stone Peak":3,"Old Trees":4}
+[STALE_OPTS] step=0 stale_turns=1 seat=3(meerkat) tiles=7 legal_attackers=7 opts=0 units={"Thorn Bush":4,"The Delta":3,"High Peak":4,"High Valley":4,"Wind Ridge":5,"Tree Island":2,"Crown Forest":3}
+[STALE_OPTS] step=0 stale_turns=1 seat=4(panda) tiles=7 legal_attackers=7 opts=0 units={"Bamboo Forest":6,"Outer Bamboo":4,"Bamboo Valley":3,"Sacred Bamboo":4,"Inner Bush":3,"Bush Island":4,"Deep Forest":3}
+[ATTACK_PICK] seat=1 score=0.281 key=(5,2,0,0) att=Mud Hills def=Frozen Mud
+[COMBAT] Mud Hills (koala) vs Frozen Mud (beaver) dice att[6,5,4] def[2,1] units 4->4 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=1 score=0.333 key=(5,5,0,0) att=Clear River def=Cold River post=1 anchor=0.281 min_frac=0.90 gate=pass
+[COMBAT] Clear River (koala) vs Cold River (llama) dice att[6,3] def[5,4,1] units 3->2 / 5->4 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=2 score=0.309 key=(5,2,1,0) att=Muddy Island def=Inner Mud
+[COMBAT] Muddy Island (llama) vs Inner Mud (koala) dice att[5,4] def[2,2] units 3->3 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=2 score=0.308 key=(5,2,1,0) att=Inner Mud def=Mud Hills post=1 anchor=0.309 min_frac=0.90 gate=pass
+[COMBAT] Inner Mud (llama) vs Mud Hills (koala) dice att[6,3] def[4,4] units 3->2 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.346 key=(5,1,0,0) att=High Peak def=Central Peak
+[COMBAT] High Peak (meerkat) vs Central Peak (koala) dice att[5,4,1] def[1] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 chain_gate=fail post=1 score=0.309 anchor=0.346 min_frac=0.90
+[ATTACK_PICK] seat=4 score=0.361 key=(5,3,2,0) att=Inner Bush def=Wind Plains
+[COMBAT] Inner Bush (panda) vs Wind Plains (koala) dice att[5,5] def[3,2,2] units 3->3 / 3->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.372 key=(5,4,2,0) att=Outer Bamboo def=Cold River post=1 anchor=0.361 min_frac=0.90 gate=pass
+[COMBAT] Outer Bamboo (panda) vs Cold River (llama) dice att[6,5,4] def[6,2,1] units 4->3 / 4->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.309 key=(5,2,1,0) att=Main River def=River Falls
+[COMBAT] Main River (beaver) vs River Falls (koala) dice att[6,4,2] def[5,2] units 4->4 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.308 key=(5,2,1,0) att=Stone Bridge def=Beaver Dam post=1 anchor=0.309 min_frac=0.90 gate=pass
+[COMBAT] Stone Bridge (beaver) vs Beaver Dam (koala) dice att[6,6,3] def[4,4] units 4->4 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.307 key=(5,2,1,0) att=River Falls def=Clear River post=2 anchor=0.309 min_frac=0.80 gate=pass
+[COMBAT] River Falls (beaver) vs Clear River (koala) dice att[2,1,1] def[3,1] units 4->2 / 2->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=1 score=0.355 key=(4,4,2,0) att=Sun Hollow def=Dry Basin
+[COMBAT] Sun Hollow (koala) vs Dry Basin (llama) dice att[4,4,3] def[6,5,2] units 4->1 / 4->3 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=6 stale_turns=1 seat=0(beaver) tiles=9 legal_attackers=9 opts=0 units={"Muddy Coast":4,"Bamboo Ridge":2,"Bamboo Mist":3,"Wild Bamboo":2,"The Lookout":4,"Main River":2,"River Falls":2,"Stone Bridge":2,"Beaver Dam":3}
+[STALE_OPTS] step=6 stale_turns=1 seat=1(koala) tiles=3 legal_attackers=1 opts=0 units={"Frozen Mud":3,"Sun Hollow":1,"Clear River":1}
+[STALE_OPTS] step=6 stale_turns=1 seat=2(llama) tiles=8 legal_attackers=8 opts=0 units={"Mud Hills":2,"Inner Mud":2,"Muddy Island":2,"Dark Mud":3,"Bamboo Beach":4,"Dry Basin":3,"Stone Peak":3,"Old Trees":4}
+[STALE_OPTS] step=6 stale_turns=1 seat=3(meerkat) tiles=8 legal_attackers=8 opts=0 units={"Thorn Bush":5,"The Delta":3,"High Peak":3,"High Valley":4,"Central Peak":3,"Wind Ridge":4,"Tree Island":2,"Crown Forest":3}
+[STALE_OPTS] step=6 stale_turns=1 seat=4(panda) tiles=9 legal_attackers=9 opts=0 units={"Bamboo Forest":5,"Outer Bamboo":3,"Bamboo Valley":4,"Sacred Bamboo":4,"Inner Bush":3,"Wind Plains":2,"Bush Island":3,"Cold River":3,"Deep Forest":3}
+[ATTACK_PICK] seat=2 score=0.345 key=(5,1,0,0) att=Dark Mud def=Sun Hollow
+[COMBAT] Dark Mud (llama) vs Sun Hollow (koala) dice att[3,1] def[3] units 3->2 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.368 key=(5,4,2,0) att=Thorn Bush def=Muddy Coast
+[COMBAT] Thorn Bush (meerkat) vs Muddy Coast (beaver) dice att[6,5,3] def[6,1,1] units 5->4 / 4->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.475 key=(5,1,2,0) att=Cold River def=Clear River
+[COMBAT] Cold River (panda) vs Clear River (koala) dice att[3,3,2] def[5] units 4->2 / 1->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=9 stale_turns=1 seat=0(beaver) tiles=8 legal_attackers=8 opts=0 units={"Bamboo Ridge":2,"Bamboo Mist":3,"Wild Bamboo":2,"The Lookout":4,"Main River":2,"River Falls":2,"Stone Bridge":2,"Beaver Dam":3}
+[STALE_OPTS] step=9 stale_turns=1 seat=1(koala) tiles=2 legal_attackers=1 opts=0 units={"Frozen Mud":3,"Clear River":1}
+[STALE_OPTS] step=9 stale_turns=1 seat=2(llama) tiles=9 legal_attackers=9 opts=0 units={"Mud Hills":3,"Inner Mud":2,"Muddy Island":2,"Dark Mud":2,"Bamboo Beach":4,"Sun Hollow":2,"Dry Basin":2,"Stone Peak":3,"Old Trees":4}
+[STALE_OPTS] step=9 stale_turns=1 seat=3(meerkat) tiles=9 legal_attackers=9 opts=0 units={"Muddy Coast":2,"Thorn Bush":3,"The Delta":4,"High Peak":3,"High Valley":4,"Central Peak":3,"Wind Ridge":4,"Tree Island":2,"Crown Forest":3}
+[STALE_OPTS] step=9 stale_turns=1 seat=4(panda) tiles=9 legal_attackers=9 opts=0 units={"Bamboo Forest":4,"Outer Bamboo":3,"Bamboo Valley":4,"Sacred Bamboo":4,"Inner Bush":3,"Wind Plains":2,"Bush Island":3,"Cold River":2,"Deep Forest":3}
+[ATTACK_PICK] seat=0 score=0.407 key=(5,1,1,0) att=River Falls def=Clear River
+[COMBAT] River Falls (beaver) vs Clear River (koala) dice att[5,5,5] def[2] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 chain_gate=fail post=1 score=0.307 anchor=0.407 min_frac=0.90
+[ATTACK_PICK] seat=1 score=0.233 key=(3,2,0,0) att=Frozen Mud def=Inner Mud
+[COMBAT] Frozen Mud (koala) vs Inner Mud (llama) dice att[3,2] def[6,4] units 3->1 / 2->2 conquered=False def_conq=True aod=False
+[ELIM] koala eliminated by llama; 1 cards transferred
+[ATTACK_PICK] seat=2 score=0.309 key=(5,2,1,0) att=Sun Hollow def=Muddy Coast
+[COMBAT] Sun Hollow (llama) vs Muddy Coast (meerkat) dice att[3] def[6,1] units 2->1 / 2->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=3 score=0.575 key=(4,3,0,2) att=The Delta def=Mud Hills
+[COMBAT] The Delta (meerkat) vs Mud Hills (llama) dice att[5,3,3] def[4,3,2] units 4->3 / 3->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.377 key=(5,2,2,0) att=Inner Bush def=Dry Basin
+[COMBAT] Inner Bush (panda) vs Dry Basin (llama) dice att[6,5,5] def[5,3] units 4->4 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.377 key=(5,2,2,0) att=Cold River def=Main River post=1 anchor=0.377 min_frac=0.90 gate=pass
+[COMBAT] Cold River (panda) vs Main River (beaver) dice att[2] def[6,2] units 2->1 / 2->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=0 score=0.287 key=(5,3,1,0) att=Beaver Dam def=The Delta
+[COMBAT] Beaver Dam (beaver) vs The Delta (meerkat) dice att[4] def[5,4,3] units 2->1 / 3->3 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=15 stale_turns=1 seat=0(beaver) tiles=10 legal_attackers=9 opts=0 units={"Bamboo Ridge":3,"Bamboo Mist":3,"Wild Bamboo":2,"The Lookout":4,"Cold River":1,"Clear River":2,"Main River":2,"River Falls":2,"Stone Bridge":2,"Beaver Dam":2}
+[STALE_OPTS] step=15 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=15 stale_turns=1 seat=2(llama) tiles=7 legal_attackers=7 opts=0 units={"Frozen Mud":2,"Inner Mud":2,"Muddy Island":2,"Dark Mud":2,"Bamboo Beach":4,"Stone Peak":3,"Old Trees":4}
+[STALE_OPTS] step=15 stale_turns=1 seat=3(meerkat) tiles=11 legal_attackers=11 opts=0 units={"Mud Hills":3,"Muddy Coast":2,"Thorn Bush":2,"Sun Hollow":2,"The Delta":3,"High Peak":3,"High Valley":4,"Central Peak":3,"Wind Ridge":4,"Tree Island":2,"Crown Forest":3}
+[STALE_OPTS] step=15 stale_turns=1 seat=4(panda) tiles=9 legal_attackers=9 opts=0 units={"Bamboo Forest":4,"Outer Bamboo":3,"Bamboo Valley":4,"Sacred Bamboo":4,"Dry Basin":3,"Inner Bush":2,"Wind Plains":2,"Bush Island":3,"Deep Forest":3}
+[ATTACK_PICK] seat=2 score=0.309 key=(5,2,1,0) att=Dark Mud def=Muddy Coast
+[COMBAT] Dark Mud (llama) vs Muddy Coast (meerkat) dice att[5] def[6,5] units 2->1 / 2->2 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.378 key=(5,2,2,0) att=The Delta def=Clear River
+[COMBAT] The Delta (meerkat) vs Clear River (beaver) dice att[6,6,1] def[4,4] units 4->4 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.475 key=(5,1,2,0) att=Clear River def=Cold River post=1 anchor=0.378 min_frac=0.90 gate=pass
+[COMBAT] Clear River (meerkat) vs Cold River (beaver) dice att[4,4,1] def[1] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.347 key=(5,1,0,0) att=Sun Hollow def=Dark Mud post=2 anchor=0.378 min_frac=0.80 gate=pass
+[COMBAT] Sun Hollow (meerkat) vs Dark Mud (llama) dice att[2] def[2] units 2->1 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.474 key=(5,1,2,0) att=Dry Basin def=Sun Hollow
+[COMBAT] Dry Basin (panda) vs Sun Hollow (meerkat) dice att[5,4,2] def[1] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 chain_gate=fail post=1 score=0.377 anchor=0.474 min_frac=0.90
+[ATTACK_PICK] seat=0 score=0.309 key=(5,2,1,0) att=River Falls def=Clear River
+[COMBAT] River Falls (beaver) vs Clear River (meerkat) dice att[5] def[6,3] units 2->1 / 2->2 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=19 stale_turns=1 seat=0(beaver) tiles=8 legal_attackers=7 opts=0 units={"Bamboo Ridge":3,"Bamboo Mist":3,"Wild Bamboo":2,"The Lookout":4,"Main River":2,"River Falls":1,"Stone Bridge":2,"Beaver Dam":2}
+[STALE_OPTS] step=19 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=19 stale_turns=1 seat=2(llama) tiles=6 legal_attackers=6 opts=0 units={"Frozen Mud":2,"Inner Mud":2,"Muddy Island":2,"Bamboo Beach":4,"Stone Peak":3,"Old Trees":4}
+[STALE_OPTS] step=19 stale_turns=1 seat=3(meerkat) tiles=13 legal_attackers=13 opts=0 units={"Mud Hills":2,"Muddy Coast":2,"Dark Mud":2,"Thorn Bush":2,"Cold River":3,"Clear River":2,"The Delta":2,"High Peak":3,"High Valley":4,"Central Peak":3,"Wind Ridge":4,"Tree Island":3,"Crown Forest":3}
+[STALE_OPTS] step=19 stale_turns=1 seat=4(panda) tiles=10 legal_attackers=10 opts=0 units={"Bamboo Forest":4,"Outer Bamboo":4,"Bamboo Valley":4,"Sacred Bamboo":4,"Sun Hollow":2,"Dry Basin":2,"Inner Bush":2,"Wind Plains":2,"Bush Island":3,"Deep Forest":3}
+[ATTACK_PICK] seat=2 score=0.495 key=(4,3,0,3) att=Muddy Island def=Bamboo Ridge
+[COMBAT] Muddy Island (llama) vs Bamboo Ridge (beaver) dice att[1] def[6,1,1] units 2->1 / 3->3 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=3 score=0.475 key=(5,1,2,0) att=Clear River def=River Falls
+[COMBAT] Clear River (meerkat) vs River Falls (beaver) dice att[1] def[5] units 2->1 / 1->1 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=4 score=0.377 key=(5,2,2,0) att=Dry Basin def=Thorn Bush
+[COMBAT] Dry Basin (panda) vs Thorn Bush (meerkat) dice att[3] def[6,6] units 2->1 / 2->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=0 score=0.513 key=(4,2,1,1) att=The Lookout def=Wind Plains
+[COMBAT] The Lookout (beaver) vs Wind Plains (panda) dice att[4,2,1] def[6,2] units 4->1 / 2->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=23 stale_turns=1 seat=0(beaver) tiles=10 legal_attackers=8 opts=0 units={"Muddy Island":2,"Bamboo Ridge":2,"Bamboo Mist":4,"Wild Bamboo":2,"The Lookout":2,"Clear River":1,"Main River":2,"River Falls":1,"Stone Bridge":2,"Beaver Dam":2}
+[STALE_OPTS] step=23 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=23 stale_turns=1 seat=2(llama) tiles=5 legal_attackers=5 opts=0 units={"Frozen Mud":2,"Inner Mud":2,"Bamboo Beach":4,"Stone Peak":3,"Old Trees":4}
+[STALE_OPTS] step=23 stale_turns=1 seat=3(meerkat) tiles=13 legal_attackers=12 opts=0 units={"Mud Hills":2,"Muddy Coast":2,"Dark Mud":2,"Thorn Bush":2,"Dry Basin":1,"Cold River":3,"The Delta":2,"High Peak":3,"High Valley":4,"Central Peak":3,"Wind Ridge":4,"Tree Island":3,"Crown Forest":3}
+[STALE_OPTS] step=23 stale_turns=1 seat=4(panda) tiles=9 legal_attackers=8 opts=0 units={"Bamboo Forest":4,"Outer Bamboo":4,"Bamboo Valley":4,"Sacred Bamboo":4,"Sun Hollow":2,"Inner Bush":2,"Wind Plains":1,"Bush Island":3,"Deep Forest":3}
+[ATTACK_PICK] seat=2 score=0.324 key=(4,3,1,0) att=Old Trees def=Deep Forest
+[COMBAT] Old Trees (llama) vs Deep Forest (panda) dice att[5,1,1] def[3,1,1] units 4->2 / 3->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.475 key=(5,1,2,0) att=The Delta def=River Falls
+[COMBAT] The Delta (meerkat) vs River Falls (beaver) dice att[5] def[1] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.475 key=(5,1,2,0) att=River Falls def=Clear River post=1 anchor=0.475 min_frac=0.90 gate=pass
+[COMBAT] River Falls (meerkat) vs Clear River (beaver) dice att[2] def[4] units 2->1 / 1->1 conquered=False def_conq=True aod=False
+[STALE_OPTS] step=25 stale_turns=1 seat=0(beaver) tiles=10 legal_attackers=8 opts=0 units={"Muddy Island":2,"Bamboo Ridge":2,"Bamboo Mist":4,"Wild Bamboo":2,"The Lookout":2,"Clear River":1,"Main River":2,"River Falls":1,"Stone Bridge":2,"Beaver Dam":2}
+[STALE_OPTS] step=25 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=25 stale_turns=1 seat=2(llama) tiles=6 legal_attackers=5 opts=0 units={"Frozen Mud":2,"Inner Mud":3,"Bamboo Beach":4,"Stone Peak":3,"Deep Forest":1,"Old Trees":2}
+[STALE_OPTS] step=25 stale_turns=1 seat=3(meerkat) tiles=13 legal_attackers=11 opts=0 units={"Mud Hills":2,"Muddy Coast":2,"Dark Mud":3,"Thorn Bush":2,"Dry Basin":1,"Cold River":3,"The Delta":1,"High Peak":4,"High Valley":4,"Central Peak":3,"Wind Ridge":4,"Tree Island":3,"Crown Forest":3}
+[STALE_OPTS] step=25 stale_turns=1 seat=4(panda) tiles=8 legal_attackers=7 opts=0 units={"Bamboo Forest":4,"Outer Bamboo":4,"Bamboo Valley":4,"Sacred Bamboo":4,"Sun Hollow":2,"Inner Bush":2,"Wind Plains":1,"Bush Island":3}
+[ATTACK_PICK] seat=4 score=0.475 key=(5,1,2,0) att=Sun Hollow def=Dry Basin
+[COMBAT] Sun Hollow (panda) vs Dry Basin (meerkat) dice att[5,1] def[6] units 3->2 / 1->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.566 key=(4,1,1,1) att=Beaver Dam def=The Delta
+[COMBAT] Beaver Dam (beaver) vs The Delta (meerkat) dice att[3] def[3] units 2->1 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=2 score=0.359 key=(3,4,1,0) att=Stone Peak def=High Peak
+[COMBAT] Stone Peak (llama) vs High Peak (meerkat) dice att[6,6] def[6,4,1] units 3->2 / 4->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=28 stale_turns=1 seat=0(beaver) tiles=11 legal_attackers=8 opts=0 units={"Muddy Island":2,"Bamboo Ridge":2,"Bamboo Mist":4,"Wild Bamboo":3,"The Lookout":2,"Clear River":2,"Main River":2,"River Falls":1,"The Delta":1,"Stone Bridge":2,"Beaver Dam":1}
+[STALE_OPTS] step=28 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=28 stale_turns=1 seat=2(llama) tiles=6 legal_attackers=5 opts=0 units={"Frozen Mud":2,"Inner Mud":3,"Bamboo Beach":4,"Stone Peak":2,"Deep Forest":1,"Old Trees":2}
+[STALE_OPTS] step=28 stale_turns=1 seat=3(meerkat) tiles=12 legal_attackers=10 opts=0 units={"Mud Hills":2,"Muddy Coast":2,"Dark Mud":3,"Thorn Bush":2,"Dry Basin":1,"Cold River":3,"High Peak":1,"High Valley":4,"Central Peak":3,"Wind Ridge":4,"Tree Island":3,"Crown Forest":3}
+[STALE_OPTS] step=28 stale_turns=1 seat=4(panda) tiles=8 legal_attackers=7 opts=0 units={"Bamboo Forest":4,"Outer Bamboo":4,"Bamboo Valley":4,"Sacred Bamboo":4,"Sun Hollow":2,"Inner Bush":2,"Wind Plains":1,"Bush Island":2}
+[ATTACK_PICK] seat=3 score=0.474 key=(5,1,2,0) att=Mud Hills def=The Delta
+[COMBAT] Mud Hills (meerkat) vs The Delta (beaver) dice att[6,6] def[4] units 3->3 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.474 key=(5,1,2,0) att=The Delta def=Beaver Dam post=1 anchor=0.474 min_frac=0.90 gate=pass
+[COMBAT] The Delta (meerkat) vs Beaver Dam (beaver) dice att[1,1] def[6] units 3->1 / 1->1 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=4 score=0.359 key=(5,3,2,0) att=Outer Bamboo def=Cold River
+[COMBAT] Outer Bamboo (panda) vs Cold River (meerkat) dice att[2,2,2] def[3,2,2] units 4->1 / 3->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.394 key=(5,3,1,1) att=Muddy Island def=Dark Mud
+[COMBAT] Muddy Island (beaver) vs Dark Mud (meerkat) dice att[2] def[6,3,1] units 2->1 / 3->3 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=2 score=0.349 key=(4,1,1,0) att=Frozen Mud def=Mud Hills
+[COMBAT] Frozen Mud (llama) vs Mud Hills (meerkat) dice att[6,5,2] def[5] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=2 chain_gate=fail post=1 score=0.310 anchor=0.349 min_frac=0.90
+[ATTACK_PICK] seat=3 score=0.346 key=(5,1,0,0) att=Crown Forest def=Deep Forest
+[COMBAT] Crown Forest (meerkat) vs Deep Forest (llama) dice att[6,5,2] def[3] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.319 key=(5,2,0,2) att=Muddy Coast def=Mud Hills post=1 anchor=0.346 min_frac=0.90 gate=pass
+[COMBAT] Muddy Coast (meerkat) vs Mud Hills (llama) dice att[4] def[6,1] units 2->1 / 2->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=4 score=0.376 key=(5,2,2,0) att=Outer Bamboo def=Cold River
+[COMBAT] Outer Bamboo (panda) vs Cold River (meerkat) dice att[5] def[5,3] units 2->1 / 2->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=34 stale_turns=1 seat=0(beaver) tiles=10 legal_attackers=7 opts=0 units={"Bamboo Ridge":2,"Bamboo Mist":5,"Wild Bamboo":3,"The Lookout":2,"Clear River":2,"Main River":2,"River Falls":1,"The Delta":1,"Stone Bridge":2,"Beaver Dam":1}
+[STALE_OPTS] step=34 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=34 stale_turns=1 seat=2(llama) tiles=7 legal_attackers=6 opts=0 units={"Frozen Mud":2,"Mud Hills":2,"Inner Mud":2,"Muddy Coast":1,"Bamboo Beach":4,"Stone Peak":3,"Old Trees":2}
+[STALE_OPTS] step=34 stale_turns=1 seat=3(meerkat) tiles=12 legal_attackers=10 opts=0 units={"Muddy Island":2,"Dark Mud":3,"Thorn Bush":2,"Dry Basin":1,"Cold River":1,"High Peak":2,"High Valley":3,"Central Peak":3,"Wind Ridge":4,"Tree Island":2,"Deep Forest":3,"Crown Forest":2}
+[STALE_OPTS] step=34 stale_turns=1 seat=4(panda) tiles=8 legal_attackers=7 opts=0 units={"Bamboo Forest":3,"Outer Bamboo":2,"Bamboo Valley":3,"Sacred Bamboo":4,"Sun Hollow":2,"Inner Bush":2,"Wind Plains":1,"Bush Island":2}
+[ATTACK_PICK] seat=0 score=0.307 key=(5,2,1,0) att=Bamboo Mist def=Outer Bamboo
+[COMBAT] Bamboo Mist (beaver) vs Outer Bamboo (panda) dice att[3,2,1] def[1,1] units 5->5 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.406 key=(5,1,1,0) att=Outer Bamboo def=Cold River post=1 anchor=0.307 min_frac=0.90 gate=pass
+[COMBAT] Outer Bamboo (beaver) vs Cold River (meerkat) dice att[4,3,3] def[2] units 5->5 / 1->1 conquered=True def_conq=False aod=False
+[CONTINENT] beaver completed Riverside; +7 pending deploy bonus
+[ATTACK_PICK] seat=0 score=0.411 key=(5,3,1,3) att=Stone Bridge def=Stone Peak post=2 anchor=0.307 min_frac=0.80 gate=pass
+[COMBAT] Stone Bridge (beaver) vs Stone Peak (llama) dice att[2] def[5,4,1] units 2->1 / 3->3 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=2 score=0.309 key=(4,2,1,0) att=Inner Mud def=Muddy Island
+[COMBAT] Inner Mud (llama) vs Muddy Island (meerkat) dice att[4] def[5,3] units 2->1 / 2->2 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=36 stale_turns=1 seat=0(beaver) tiles=11 legal_attackers=10 opts=0 units={"Bamboo Ridge":4,"Bamboo Mist":2,"Outer Bamboo":3,"Wild Bamboo":5,"The Lookout":4,"Cold River":3,"Clear River":2,"Main River":2,"River Falls":2,"The Delta":1,"Beaver Dam":2}
+[STALE_OPTS] step=36 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=36 stale_turns=1 seat=2(llama) tiles=8 legal_attackers=8 opts=0 units={"Frozen Mud":2,"Mud Hills":2,"Inner Mud":2,"Muddy Coast":2,"Bamboo Beach":4,"Stone Bridge":2,"Stone Peak":2,"Old Trees":2}
+[STALE_OPTS] step=36 stale_turns=1 seat=3(meerkat) tiles=11 legal_attackers=10 opts=0 units={"Muddy Island":2,"Dark Mud":3,"Thorn Bush":2,"Dry Basin":1,"High Peak":2,"High Valley":3,"Central Peak":3,"Wind Ridge":4,"Tree Island":2,"Deep Forest":3,"Crown Forest":2}
+[STALE_OPTS] step=36 stale_turns=1 seat=4(panda) tiles=7 legal_attackers=6 opts=0 units={"Bamboo Forest":3,"Bamboo Valley":3,"Sacred Bamboo":4,"Sun Hollow":2,"Inner Bush":2,"Wind Plains":1,"Bush Island":2}
+[ATTACK_PICK] seat=3 score=0.471 key=(4,2,0,3) att=Dark Mud def=Sun Hollow
+[COMBAT] Dark Mud (meerkat) vs Sun Hollow (panda) dice att[5,3,1] def[6,2] units 4->3 / 2->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.280 key=(5,2,0,0) att=Bamboo Forest def=Bamboo Mist
+[COMBAT] Bamboo Forest (panda) vs Bamboo Mist (beaver) dice att[4,4] def[3,3] units 3->3 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.320 key=(3,1,2,0) att=Inner Bush def=Dry Basin post=1 anchor=0.280 min_frac=0.90 gate=pass
+[COMBAT] Inner Bush (panda) vs Dry Basin (meerkat) dice att[5,3] def[6] units 3->2 / 1->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.309 key=(5,2,1,0) att=Main River def=Stone Bridge
+[COMBAT] Main River (beaver) vs Stone Bridge (llama) dice att[5] def[5,2] units 2->1 / 2->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=39 stale_turns=1 seat=0(beaver) tiles=10 legal_attackers=9 opts=0 units={"Bamboo Ridge":4,"Outer Bamboo":3,"Wild Bamboo":5,"The Lookout":4,"Cold River":2,"Clear River":2,"Main River":2,"River Falls":2,"The Delta":1,"Beaver Dam":2}
+[STALE_OPTS] step=39 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=39 stale_turns=1 seat=2(llama) tiles=8 legal_attackers=7 opts=0 units={"Frozen Mud":2,"Mud Hills":2,"Inner Mud":2,"Muddy Coast":2,"Bamboo Beach":4,"Stone Bridge":1,"Stone Peak":2,"Old Trees":2}
+[STALE_OPTS] step=39 stale_turns=1 seat=3(meerkat) tiles=11 legal_attackers=10 opts=0 units={"Muddy Island":2,"Dark Mud":2,"Thorn Bush":2,"Dry Basin":1,"High Peak":2,"High Valley":3,"Central Peak":3,"Wind Ridge":4,"Tree Island":2,"Deep Forest":3,"Crown Forest":2}
+[STALE_OPTS] step=39 stale_turns=1 seat=4(panda) tiles=8 legal_attackers=6 opts=0 units={"Bamboo Forest":3,"Bamboo Mist":2,"Bamboo Valley":3,"Sacred Bamboo":3,"Sun Hollow":2,"Inner Bush":2,"Wind Plains":1,"Bush Island":1}
+[ATTACK_PICK] seat=2 score=0.345 key=(5,1,0,0) att=Mud Hills def=The Delta
+[COMBAT] Mud Hills (llama) vs The Delta (beaver) dice att[3,2,2] def[6] units 4->1 / 1->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.422 key=(3,2,0,3) att=Dark Mud def=Sun Hollow
+[COMBAT] Dark Mud (meerkat) vs Sun Hollow (panda) dice att[4] def[5,4] units 2->1 / 2->2 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.321 key=(3,1,2,0) att=Inner Bush def=Dry Basin
+[COMBAT] Inner Bush (panda) vs Dry Basin (meerkat) dice att[6,6] def[1] units 3->3 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.290 key=(5,4,0,0) att=Sacred Bamboo def=Bamboo Ridge post=1 anchor=0.321 min_frac=0.90 gate=pass
+[COMBAT] Sacred Bamboo (panda) vs Bamboo Ridge (beaver) dice att[3,1] def[5,5,4] units 3->1 / 4->4 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=0 score=0.408 key=(5,1,1,0) att=Main River def=Stone Bridge
+[COMBAT] Main River (beaver) vs Stone Bridge (llama) dice att[1] def[3] units 2->1 / 1->1 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=2 score=0.346 key=(2,2,0,2) att=Muddy Coast def=Thorn Bush
+[COMBAT] Muddy Coast (llama) vs Thorn Bush (meerkat) dice att[2] def[6,5] units 2->1 / 2->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=3 score=0.280 key=(5,2,0,0) att=Deep Forest def=Old Trees
+[COMBAT] Deep Forest (meerkat) vs Old Trees (llama) dice att[4,4,3] def[4,3] units 4->3 / 2->1 conquered=True def_conq=False aod=False
+[CONTINENT] meerkat completed Eucalypta; +4 pending deploy bonus
+[ATTACK_PICK] seat=4 score=0.324 key=(5,3,0,1) att=Bamboo Valley def=Sacred Bamboo
+[COMBAT] Bamboo Valley (panda) vs Sacred Bamboo (beaver) dice att[6,5] def[6,6,1] units 3->1 / 3->2 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=46 stale_turns=1 seat=0(beaver) tiles=10 legal_attackers=9 opts=0 units={"Bamboo Ridge":3,"Outer Bamboo":3,"Sacred Bamboo":2,"Wild Bamboo":4,"The Lookout":5,"Cold River":2,"Clear River":2,"River Falls":2,"The Delta":1,"Beaver Dam":2}
+[STALE_OPTS] step=46 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=46 stale_turns=1 seat=2(llama) tiles=7 legal_attackers=3 opts=0 units={"Frozen Mud":1,"Mud Hills":1,"Inner Mud":1,"Bamboo Beach":4,"Main River":2,"Stone Bridge":1,"Stone Peak":2}
+[STALE_OPTS] step=46 stale_turns=1 seat=3(meerkat) tiles=12 legal_attackers=12 opts=0 units={"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Thorn Bush":2,"High Peak":4,"High Valley":4,"Central Peak":3,"Wind Ridge":3,"Tree Island":2,"Deep Forest":3,"Crown Forest":2,"Old Trees":2}
+[STALE_OPTS] step=46 stale_turns=1 seat=4(panda) tiles=8 legal_attackers=5 opts=0 units={"Bamboo Forest":2,"Bamboo Mist":3,"Bamboo Valley":2,"Sun Hollow":2,"Dry Basin":2,"Inner Bush":1,"Wind Plains":1,"Bush Island":1}
+[ATTACK_PICK] seat=0 score=0.409 key=(5,1,1,0) att=Beaver Dam def=Stone Bridge
+[COMBAT] Beaver Dam (beaver) vs Stone Bridge (llama) dice att[2] def[1] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.409 key=(5,1,1,0) att=The Lookout def=Inner Bush post=1 anchor=0.409 min_frac=0.90 gate=pass
+[COMBAT] The Lookout (beaver) vs Inner Bush (panda) dice att[6,2,1] def[4] units 5->5 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.409 key=(5,1,1,0) att=Inner Bush def=Bush Island post=2 anchor=0.409 min_frac=0.80 gate=pass
+[COMBAT] Inner Bush (beaver) vs Bush Island (panda) dice att[3,2,1] def[6] units 5->2 / 1->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=2 score=0.336 key=(2,2,0,1) att=Main River def=Beaver Dam
+[COMBAT] Main River (llama) vs Beaver Dam (beaver) dice att[3] def[4,3] units 2->1 / 2->2 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=48 stale_turns=1 seat=0(beaver) tiles=12 legal_attackers=10 opts=0 units={"Bamboo Ridge":3,"Outer Bamboo":3,"Sacred Bamboo":3,"Wild Bamboo":3,"Inner Bush":2,"The Lookout":1,"Cold River":2,"Clear River":2,"River Falls":2,"The Delta":1,"Stone Bridge":3,"Beaver Dam":2}
+[STALE_OPTS] step=48 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=48 stale_turns=1 seat=2(llama) tiles=6 legal_attackers=2 opts=0 units={"Frozen Mud":1,"Mud Hills":1,"Inner Mud":1,"Bamboo Beach":4,"Main River":1,"Stone Peak":2}
+[STALE_OPTS] step=48 stale_turns=1 seat=3(meerkat) tiles=12 legal_attackers=12 opts=0 units={"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Thorn Bush":2,"High Peak":4,"High Valley":4,"Central Peak":3,"Wind Ridge":3,"Tree Island":2,"Deep Forest":3,"Crown Forest":2,"Old Trees":2}
+[STALE_OPTS] step=48 stale_turns=1 seat=4(panda) tiles=7 legal_attackers=5 opts=0 units={"Bamboo Forest":2,"Bamboo Mist":3,"Bamboo Valley":2,"Sun Hollow":2,"Dry Basin":2,"Wind Plains":1,"Bush Island":1}
+[ATTACK_PICK] seat=3 score=0.346 key=(5,1,0,0) att=Old Trees def=Bush Island
+[COMBAT] Old Trees (meerkat) vs Bush Island (panda) dice att[2] def[3] units 2->1 / 1->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.324 key=(5,3,0,1) att=Bamboo Valley def=Sacred Bamboo
+[COMBAT] Bamboo Valley (panda) vs Sacred Bamboo (beaver) dice att[6] def[5,5,1] units 2->2 / 3->2 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.459 key=(5,1,1,3) att=River Falls def=Main River
+[COMBAT] River Falls (beaver) vs Main River (llama) dice att[5] def[3] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[CONTINENT] beaver completed Riverside; +7 pending deploy bonus
+[ATTACK_PICK] seat=0 chain_gate=fail post=1 score=0.309 anchor=0.459 min_frac=0.90
+[ATTACK_PICK] seat=2 score=0.306 key=(4,4,0,0) att=Bamboo Beach def=Sacred Bamboo
+[COMBAT] Bamboo Beach (llama) vs Sacred Bamboo (beaver) dice att[6,4,1] def[6,5,1] units 4->1 / 4->2 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=52 stale_turns=1 seat=0(beaver) tiles=13 legal_attackers=12 opts=0 units={"Bamboo Ridge":4,"Outer Bamboo":3,"Sacred Bamboo":2,"Wild Bamboo":3,"Inner Bush":3,"The Lookout":2,"Cold River":3,"Clear River":2,"Main River":3,"River Falls":2,"The Delta":1,"Stone Bridge":3,"Beaver Dam":2}
+[STALE_OPTS] step=52 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=52 stale_turns=1 seat=2(llama) tiles=5 legal_attackers=1 opts=0 units={"Frozen Mud":1,"Mud Hills":1,"Inner Mud":1,"Bamboo Beach":1,"Stone Peak":2}
+[STALE_OPTS] step=52 stale_turns=1 seat=3(meerkat) tiles=12 legal_attackers=12 opts=0 units={"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Thorn Bush":2,"High Peak":4,"High Valley":4,"Central Peak":3,"Wind Ridge":3,"Tree Island":2,"Deep Forest":2,"Crown Forest":2,"Old Trees":2}
+[STALE_OPTS] step=52 stale_turns=1 seat=4(panda) tiles=7 legal_attackers=5 opts=0 units={"Bamboo Forest":2,"Bamboo Mist":3,"Bamboo Valley":2,"Sun Hollow":2,"Dry Basin":2,"Wind Plains":1,"Bush Island":1}
+[ATTACK_PICK] seat=3 score=0.388 key=(5,1,0,2) att=Muddy Coast def=Mud Hills
+[COMBAT] Muddy Coast (meerkat) vs Mud Hills (llama) dice att[6,4,3] def[2] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.475 key=(5,1,2,0) att=Mud Hills def=The Delta post=1 anchor=0.388 min_frac=0.90 gate=pass
+[COMBAT] Mud Hills (meerkat) vs The Delta (beaver) dice att[3,3,1] def[5] units 4->2 / 1->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.345 key=(5,1,0,0) att=Bamboo Valley def=Bamboo Beach
+[COMBAT] Bamboo Valley (panda) vs Bamboo Beach (llama) dice att[3] def[4] units 2->1 / 1->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=54 stale_turns=1 seat=0(beaver) tiles=13 legal_attackers=12 opts=0 units={"Bamboo Ridge":4,"Outer Bamboo":3,"Sacred Bamboo":2,"Wild Bamboo":3,"Inner Bush":3,"The Lookout":2,"Cold River":3,"Clear River":2,"Main River":3,"River Falls":2,"The Delta":1,"Stone Bridge":3,"Beaver Dam":2}
+[STALE_OPTS] step=54 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=54 stale_turns=1 seat=2(llama) tiles=4 legal_attackers=1 opts=0 units={"Frozen Mud":1,"Inner Mud":1,"Bamboo Beach":1,"Stone Peak":2}
+[STALE_OPTS] step=54 stale_turns=1 seat=3(meerkat) tiles=13 legal_attackers=11 opts=0 units={"Mud Hills":2,"Muddy Island":2,"Muddy Coast":1,"Dark Mud":1,"Thorn Bush":2,"High Peak":4,"High Valley":4,"Central Peak":3,"Wind Ridge":3,"Tree Island":2,"Deep Forest":2,"Crown Forest":2,"Old Trees":2}
+[STALE_OPTS] step=54 stale_turns=1 seat=4(panda) tiles=7 legal_attackers=5 opts=0 units={"Bamboo Forest":2,"Bamboo Mist":2,"Bamboo Valley":2,"Sun Hollow":2,"Dry Basin":2,"Wind Plains":1,"Bush Island":1}
+[ATTACK_PICK] seat=0 score=0.475 key=(5,1,1,2) att=Sacred Bamboo def=Bamboo Beach
+[COMBAT] Sacred Bamboo (beaver) vs Bamboo Beach (llama) dice att[4] def[6] units 2->1 / 1->1 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=2 score=0.260 key=(2,3,1,0) att=Stone Peak def=Central Peak
+[COMBAT] Stone Peak (llama) vs Central Peak (meerkat) dice att[2] def[2,1,1] units 2->1 / 3->2 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=56 stale_turns=1 seat=0(beaver) tiles=12 legal_attackers=11 opts=0 units={"Bamboo Ridge":4,"Outer Bamboo":3,"Wild Bamboo":3,"Inner Bush":3,"The Lookout":2,"Cold River":3,"Clear River":2,"Main River":3,"River Falls":2,"The Delta":1,"Stone Bridge":3,"Beaver Dam":2}
+[STALE_OPTS] step=56 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=56 stale_turns=1 seat=2(llama) tiles=5 legal_attackers=1 opts=0 units={"Frozen Mud":2,"Inner Mud":1,"Bamboo Beach":1,"Sacred Bamboo":1,"Stone Peak":1}
+[STALE_OPTS] step=56 stale_turns=1 seat=3(meerkat) tiles=13 legal_attackers=11 opts=0 units={"Mud Hills":2,"Muddy Island":2,"Muddy Coast":1,"Dark Mud":1,"Thorn Bush":2,"High Peak":4,"High Valley":4,"Central Peak":2,"Wind Ridge":3,"Tree Island":2,"Deep Forest":2,"Crown Forest":2,"Old Trees":2}
+[STALE_OPTS] step=56 stale_turns=1 seat=4(panda) tiles=7 legal_attackers=5 opts=0 units={"Bamboo Forest":2,"Bamboo Mist":2,"Bamboo Valley":2,"Sun Hollow":2,"Dry Basin":2,"Wind Plains":1,"Bush Island":1}
+[ATTACK_PICK] seat=3 score=0.346 key=(5,1,0,0) att=Old Trees def=Bush Island
+[COMBAT] Old Trees (meerkat) vs Bush Island (panda) dice att[2] def[4] units 2->1 / 1->1 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=4 score=0.507 key=(4,1,0,1) att=Bamboo Forest def=Sacred Bamboo
+[COMBAT] Bamboo Forest (panda) vs Sacred Bamboo (llama) dice att[4] def[5] units 2->1 / 1->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=58 stale_turns=1 seat=0(beaver) tiles=12 legal_attackers=11 opts=0 units={"Bamboo Ridge":4,"Outer Bamboo":3,"Wild Bamboo":3,"Inner Bush":3,"The Lookout":2,"Cold River":3,"Clear River":2,"Main River":3,"River Falls":2,"The Delta":1,"Stone Bridge":3,"Beaver Dam":2}
+[STALE_OPTS] step=58 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=58 stale_turns=1 seat=2(llama) tiles=5 legal_attackers=1 opts=0 units={"Frozen Mud":2,"Inner Mud":1,"Bamboo Beach":1,"Sacred Bamboo":1,"Stone Peak":1}
+[STALE_OPTS] step=58 stale_turns=1 seat=3(meerkat) tiles=12 legal_attackers=10 opts=0 units={"Mud Hills":2,"Muddy Island":2,"Muddy Coast":1,"Dark Mud":1,"Thorn Bush":2,"High Peak":3,"High Valley":4,"Central Peak":3,"Wind Ridge":3,"Tree Island":2,"Deep Forest":2,"Crown Forest":2}
+[STALE_OPTS] step=58 stale_turns=1 seat=4(panda) tiles=8 legal_attackers=5 opts=0 units={"Bamboo Forest":2,"Bamboo Mist":2,"Bamboo Valley":2,"Sun Hollow":2,"Dry Basin":2,"Wind Plains":1,"Bush Island":1,"Old Trees":1}
+[ATTACK_PICK] seat=0 score=0.409 key=(5,1,1,0) att=Bamboo Ridge def=Sacred Bamboo
+[COMBAT] Bamboo Ridge (beaver) vs Sacred Bamboo (llama) dice att[5,3] def[3] units 3->3 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.474 key=(5,1,1,2) att=Sacred Bamboo def=Bamboo Beach post=1 anchor=0.409 min_frac=0.90 gate=pass
+[COMBAT] Sacred Bamboo (beaver) vs Bamboo Beach (llama) dice att[3,3] def[6] units 3->1 / 1->1 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=2 score=0.223 key=(2,2,1,0) att=Frozen Mud def=Mud Hills
+[COMBAT] Frozen Mud (llama) vs Mud Hills (meerkat) dice att[3] def[2,1] units 2->2 / 2->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.280 key=(5,2,0,0) att=Central Peak def=Stone Peak
+[COMBAT] Central Peak (meerkat) vs Stone Peak (llama) dice att[5,2] def[6,2] units 3->1 / 2->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.451 key=(3,1,0,3) att=Sun Hollow def=Muddy Coast
+[COMBAT] Sun Hollow (panda) vs Muddy Coast (meerkat) dice att[6] def[2] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 chain_gate=fail post=1 score=0.291 anchor=0.451 min_frac=0.90
+[ATTACK_PICK] seat=0 score=0.497 key=(5,1,1,1) att=Inner Bush def=Wind Plains
+[COMBAT] Inner Bush (beaver) vs Wind Plains (panda) dice att[6,3,2] def[2] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 chain_gate=fail post=1 score=0.408 anchor=0.497 min_frac=0.90
+[ATTACK_PICK] seat=2 score=0.252 key=(2,1,1,0) att=Frozen Mud def=Mud Hills
+[COMBAT] Frozen Mud (llama) vs Mud Hills (meerkat) dice att[4] def[6] units 2->1 / 1->1 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=3 score=0.345 key=(5,1,0,0) att=High Peak def=Stone Peak
+[COMBAT] High Peak (meerkat) vs Stone Peak (llama) dice att[5,3,2] def[2] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[CONTINENT] meerkat completed Peaks; +4 pending deploy bonus
+[ATTACK_PICK] seat=3 score=0.539 key=(5,3,2,2) att=Stone Peak def=Stone Bridge post=1 anchor=0.345 min_frac=0.90 gate=pass
+[COMBAT] Stone Peak (meerkat) vs Stone Bridge (beaver) dice att[6,4,2] def[6,5,4] units 4->1 / 3->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=4 score=0.307 key=(4,2,2,0) att=Sun Hollow def=Inner Bush
+[COMBAT] Sun Hollow (panda) vs Inner Bush (beaver) dice att[4] def[5,4] units 2->1 / 2->2 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=66 stale_turns=1 seat=0(beaver) tiles=14 legal_attackers=12 opts=0 units={"Bamboo Ridge":2,"Outer Bamboo":4,"Wild Bamboo":3,"Inner Bush":2,"The Lookout":2,"Wind Plains":3,"Cold River":3,"Clear River":2,"Main River":3,"River Falls":2,"The Delta":1,"Stone Bridge":2,"Beaver Dam":2,"Stone Peak":1}
+[STALE_OPTS] step=66 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=66 stale_turns=1 seat=2(llama) tiles=3 legal_attackers=0 opts=0 units={"Inner Mud":1,"Bamboo Beach":1,"Sacred Bamboo":1}
+[STALE_OPTS] step=66 stale_turns=1 seat=3(meerkat) tiles=12 legal_attackers=11 opts=0 units={"Frozen Mud":2,"Mud Hills":2,"Muddy Island":3,"Dark Mud":2,"Thorn Bush":4,"High Peak":1,"High Valley":2,"Central Peak":2,"Wind Ridge":3,"Tree Island":2,"Deep Forest":2,"Crown Forest":2}
+[STALE_OPTS] step=66 stale_turns=1 seat=4(panda) tiles=8 legal_attackers=5 opts=0 units={"Muddy Coast":2,"Bamboo Forest":2,"Bamboo Mist":2,"Bamboo Valley":2,"Sun Hollow":1,"Dry Basin":2,"Bush Island":1,"Old Trees":1}
+[ATTACK_PICK] seat=0 score=0.408 key=(5,1,1,0) att=Wind Plains def=Bush Island
+[COMBAT] Wind Plains (beaver) vs Bush Island (panda) dice att[5,3,2] def[3] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 chain_gate=fail post=1 score=0.308 anchor=0.408 min_frac=0.90
+[ATTACK_PICK] seat=2 score=0.346 key=(1,2,0,2) att=Sacred Bamboo def=Bamboo Forest
+[COMBAT] Sacred Bamboo (llama) vs Bamboo Forest (panda) dice att[3] def[6,4] units 1->1 / 2->2 conquered=False def_conq=True aod=True
+[ATTACK_PICK] seat=3 score=0.472 key=(5,1,2,0) att=Central Peak def=Stone Peak
+[COMBAT] Central Peak (meerkat) vs Stone Peak (beaver) dice att[5] def[3] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[CONTINENT] meerkat completed Peaks; +4 pending deploy bonus
+[ATTACK_PICK] seat=3 score=0.490 key=(5,2,2,2) att=Stone Peak def=Stone Bridge post=1 anchor=0.472 min_frac=0.90 gate=pass
+[COMBAT] Stone Peak (meerkat) vs Stone Bridge (beaver) dice att[3] def[4,2] units 2->1 / 2->2 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.350 key=(3,4,2,0) att=Dry Basin def=Thorn Bush
+[COMBAT] Dry Basin (panda) vs Thorn Bush (meerkat) dice att[1] def[6,4,4] units 2->1 / 4->4 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=0 score=0.408 key=(5,1,1,0) att=The Lookout def=Dry Basin
+[COMBAT] The Lookout (beaver) vs Dry Basin (meerkat) dice att[1] def[4] units 2->1 / 1->1 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=2 score=0.440 key=(1,4,1,0) att=Inner Mud def=Muddy Island
+[COMBAT] Inner Mud (llama) vs Muddy Island (meerkat) dice att[6] def[5,5,1] units 1->1 / 4->3 conquered=False def_conq=False aod=True
+[STALE_OPTS] step=72 stale_turns=1 seat=0(beaver) tiles=13 legal_attackers=13 opts=0 units={"Bamboo Ridge":2,"Outer Bamboo":4,"Wild Bamboo":3,"Inner Bush":2,"Wind Plains":2,"Bush Island":2,"Cold River":3,"Clear River":3,"Main River":3,"River Falls":2,"The Delta":2,"Stone Bridge":2,"Beaver Dam":2}
+[STALE_OPTS] step=72 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=72 stale_turns=1 seat=2(llama) tiles=2 legal_attackers=0 opts=0 units={"Inner Mud":1,"Bamboo Beach":1}
+[STALE_OPTS] step=72 stale_turns=1 seat=3(meerkat) tiles=15 legal_attackers=12 opts=0 units={"Frozen Mud":3,"Mud Hills":2,"Muddy Island":3,"Dark Mud":3,"Thorn Bush":4,"Dry Basin":1,"The Lookout":1,"Stone Peak":2,"High Peak":1,"High Valley":2,"Central Peak":2,"Wind Ridge":2,"Tree Island":2,"Deep Forest":3,"Crown Forest":2}
+[STALE_OPTS] step=72 stale_turns=1 seat=4(panda) tiles=7 legal_attackers=5 opts=0 units={"Muddy Coast":2,"Bamboo Forest":2,"Bamboo Mist":2,"Bamboo Valley":2,"Sacred Bamboo":1,"Sun Hollow":2,"Old Trees":1}
+[ATTACK_PICK] seat=3 score=0.499 key=(5,2,2,2) att=Stone Peak def=Stone Bridge
+[COMBAT] Stone Peak (meerkat) vs Stone Bridge (beaver) dice att[3] def[4,3] units 2->1 / 2->2 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.313 key=(4,4,0,0) att=Bamboo Valley def=Outer Bamboo
+[COMBAT] Bamboo Valley (panda) vs Outer Bamboo (beaver) dice att[1] def[5,5,1] units 2->1 / 4->4 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=0 score=0.454 key=(5,1,1,3) att=Stone Bridge def=Stone Peak
+[COMBAT] Stone Bridge (beaver) vs Stone Peak (meerkat) dice att[5] def[2] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 chain_gate=fail post=1 score=0.379 anchor=0.454 min_frac=0.90
+[ATTACK_PICK] seat=2 score=0.318 key=(1,2,0,3) att=Bamboo Beach def=Bamboo Valley
+[COMBAT] Bamboo Beach (llama) vs Bamboo Valley (beaver) dice att[2] def[6,3] units 1->1 / 2->2 conquered=False def_conq=True aod=True
+[ATTACK_PICK] seat=3 score=0.501 key=(5,2,2,2) att=The Lookout def=Inner Bush
+[COMBAT] The Lookout (meerkat) vs Inner Bush (beaver) dice att[6] def[4,1] units 2->2 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 chain_gate=fail post=1 score=0.378 anchor=0.501 min_frac=0.90
+[ATTACK_PICK] seat=4 score=0.242 key=(3,2,0,0) att=Bamboo Forest def=Bamboo Valley
+[COMBAT] Bamboo Forest (panda) vs Bamboo Valley (beaver) dice att[5] def[5,4] units 2->1 / 2->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=78 stale_turns=1 seat=0(beaver) tiles=15 legal_attackers=13 opts=0 units={"Bamboo Ridge":2,"Outer Bamboo":3,"Bamboo Valley":1,"Bamboo Beach":1,"Wild Bamboo":3,"Wind Plains":2,"Bush Island":3,"Cold River":3,"Clear River":3,"Main River":2,"River Falls":2,"The Delta":2,"Stone Bridge":2,"Beaver Dam":2,"Stone Peak":3}
+[STALE_OPTS] step=78 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=78 stale_turns=1 seat=2(llama) tiles=1 legal_attackers=0 opts=0 units={"Inner Mud":1}
+[STALE_OPTS] step=78 stale_turns=1 seat=3(meerkat) tiles=15 legal_attackers=14 opts=0 units={"Frozen Mud":3,"Mud Hills":2,"Muddy Island":4,"Dark Mud":3,"Thorn Bush":3,"Dry Basin":2,"Inner Bush":2,"The Lookout":1,"High Peak":2,"High Valley":2,"Central Peak":2,"Wind Ridge":2,"Tree Island":2,"Deep Forest":3,"Crown Forest":2}
+[STALE_OPTS] step=78 stale_turns=1 seat=4(panda) tiles=6 legal_attackers=3 opts=0 units={"Muddy Coast":2,"Bamboo Forest":1,"Bamboo Mist":2,"Sacred Bamboo":1,"Sun Hollow":2,"Old Trees":1}
+[ATTACK_PICK] seat=0 score=0.379 key=(5,2,1,1) att=Stone Peak def=High Peak
+[COMBAT] Stone Peak (beaver) vs High Peak (meerkat) dice att[6,5] def[2,1] units 3->3 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.379 key=(5,2,1,1) att=High Peak def=High Valley post=1 anchor=0.379 min_frac=0.90 gate=pass
+[COMBAT] High Peak (beaver) vs High Valley (meerkat) dice att[5,2] def[1,1] units 3->3 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.308 key=(5,2,1,0) att=High Valley def=Wind Ridge post=2 anchor=0.379 min_frac=0.80 gate=pass
+[COMBAT] High Valley (beaver) vs Wind Ridge (meerkat) dice att[6,4] def[6,5] units 3->1 / 2->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=2 score=0.427 key=(1,4,1,0) att=Inner Mud def=Muddy Island
+[COMBAT] Inner Mud (llama) vs Muddy Island (meerkat) dice att[4] def[5,3,2] units 1->1 / 4->4 conquered=False def_conq=True aod=True
+[ELIM] llama eliminated by meerkat; 9 cards transferred
+[ATTACK_PICK] seat=3 score=0.377 key=(5,2,2,0) att=Mud Hills def=The Delta
+[COMBAT] Mud Hills (meerkat) vs The Delta (beaver) dice att[1] def[3,1] units 2->1 / 2->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=4 score=0.250 key=(3,2,2,0) att=Sun Hollow def=Dry Basin
+[COMBAT] Sun Hollow (panda) vs Dry Basin (meerkat) dice att[4,1] def[3,1] units 3->2 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.410 key=(5,1,1,0) att=Bamboo Ridge def=Bamboo Forest
+[COMBAT] Bamboo Ridge (beaver) vs Bamboo Forest (panda) dice att[3,2,1] def[1] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.409 key=(5,1,1,0) att=Bamboo Forest def=Sacred Bamboo post=1 anchor=0.410 min_frac=0.90 gate=pass
+[COMBAT] Bamboo Forest (beaver) vs Sacred Bamboo (panda) dice att[3,2,1] def[1] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 chain_gate=fail post=2 score=0.309 anchor=0.410 min_frac=0.80
+[ATTACK_PICK] seat=3 score=0.497 key=(5,2,2,3) att=Muddy Island def=Bamboo Ridge
+[COMBAT] Muddy Island (meerkat) vs Bamboo Ridge (beaver) dice att[5,4] def[3,2] units 3->3 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.498 key=(5,2,2,3) att=Bamboo Ridge def=Wild Bamboo post=1 anchor=0.497 min_frac=0.90 gate=pass
+[COMBAT] Bamboo Ridge (meerkat) vs Wild Bamboo (beaver) dice att[4,2] def[4,1] units 3->2 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.286 key=(3,3,2,0) att=Dry Basin def=Thorn Bush
+[COMBAT] Dry Basin (panda) vs Thorn Bush (meerkat) dice att[4,2] def[5,4,2] units 3->1 / 3->3 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=0 score=0.410 key=(5,1,1,0) att=Sacred Bamboo def=Wild Bamboo
+[COMBAT] Sacred Bamboo (beaver) vs Wild Bamboo (meerkat) dice att[6] def[3] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.409 key=(5,1,1,0) att=Mud Hills def=Muddy Coast post=1 anchor=0.410 min_frac=0.90 gate=pass
+[COMBAT] Mud Hills (beaver) vs Muddy Coast (panda) dice att[1] def[2] units 2->1 / 1->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.474 key=(5,1,2,0) att=Bamboo Ridge def=Sacred Bamboo
+[COMBAT] Bamboo Ridge (meerkat) vs Sacred Bamboo (beaver) dice att[4] def[4] units 2->1 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.210 key=(2,2,0,0) att=Bamboo Mist def=Bamboo Forest
+[COMBAT] Bamboo Mist (panda) vs Bamboo Forest (beaver) dice att[1] def[3,1] units 2->1 / 2->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=0 score=0.409 key=(5,1,1,0) att=Bamboo Forest def=Bamboo Ridge
+[COMBAT] Bamboo Forest (beaver) vs Bamboo Ridge (meerkat) dice att[2] def[2] units 2->1 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.588 key=(5,1,2,2) att=Frozen Mud def=Mud Hills
+[COMBAT] Frozen Mud (meerkat) vs Mud Hills (beaver) dice att[3,3] def[4] units 3->2 / 1->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=90 stale_turns=1 seat=0(beaver) tiles=20 legal_attackers=17 opts=0 units={"Mud Hills":1,"Bamboo Ridge":2,"Bamboo Forest":2,"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Valley":2,"Bamboo Beach":2,"Wild Bamboo":2,"Wind Plains":3,"Bush Island":4,"Cold River":3,"Clear River":3,"Main River":2,"River Falls":2,"The Delta":2,"Stone Bridge":2,"Beaver Dam":2,"Stone Peak":1,"High Peak":2,"High Valley":1}
+[STALE_OPTS] step=90 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=90 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=90 stale_turns=1 seat=3(meerkat) tiles=14 legal_attackers=14 opts=0 units={"Frozen Mud":2,"Inner Mud":2,"Muddy Island":2,"Dark Mud":3,"Sacred Bamboo":2,"Thorn Bush":2,"Dry Basin":2,"Inner Bush":2,"The Lookout":3,"Central Peak":2,"Wind Ridge":2,"Tree Island":2,"Deep Forest":3,"Crown Forest":2}
+[STALE_OPTS] step=90 stale_turns=1 seat=4(panda) tiles=3 legal_attackers=0 opts=0 units={"Muddy Coast":1,"Sun Hollow":1,"Old Trees":1}
+[ATTACK_PICK] seat=4 score=0.214 key=(1,2,2,0) att=Muddy Coast def=Thorn Bush
+[COMBAT] Muddy Coast (panda) vs Thorn Bush (meerkat) dice att[1] def[3,2] units 1->1 / 2->2 conquered=False def_conq=True aod=True
+[ATTACK_PICK] seat=0 score=0.310 key=(5,2,1,0) att=Wind Plains def=Inner Bush
+[COMBAT] Wind Plains (beaver) vs Inner Bush (meerkat) dice att[5,2] def[6,5] units 3->1 / 2->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=3 score=0.583 key=(5,1,2,2) att=Inner Mud def=Mud Hills
+[COMBAT] Inner Mud (meerkat) vs Mud Hills (beaver) dice att[1] def[5] units 2->1 / 1->1 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=4 score=0.320 key=(1,2,0,3) att=Sun Hollow def=Muddy Coast
+[COMBAT] Sun Hollow (panda) vs Muddy Coast (meerkat) dice att[4] def[6,2] units 1->1 / 2->2 conquered=False def_conq=True aod=True
+[ATTACK_PICK] seat=0 score=0.548 key=(4,2,1,1) att=Bush Island def=Wind Plains
+[COMBAT] Bush Island (beaver) vs Wind Plains (meerkat) dice att[5,3,2] def[4,4] units 4->3 / 2->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=95 stale_turns=1 seat=0(beaver) tiles=20 legal_attackers=17 opts=0 units={"Mud Hills":1,"Inner Mud":1,"Bamboo Ridge":2,"Bamboo Forest":2,"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Valley":2,"Bamboo Beach":2,"Wild Bamboo":2,"Bush Island":3,"Cold River":3,"Clear River":3,"Main River":2,"River Falls":2,"The Delta":2,"Stone Bridge":2,"Beaver Dam":2,"Stone Peak":1,"High Peak":2,"High Valley":2}
+[STALE_OPTS] step=95 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=95 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=95 stale_turns=1 seat=3(meerkat) tiles=16 legal_attackers=14 opts=0 units={"Frozen Mud":3,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":3,"Sacred Bamboo":2,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":2,"The Lookout":2,"Wind Plains":1,"Central Peak":2,"Wind Ridge":2,"Tree Island":2,"Deep Forest":3,"Crown Forest":2}
+[STALE_OPTS] step=95 stale_turns=1 seat=4(panda) tiles=1 legal_attackers=0 opts=0 units={"Old Trees":1}
+[ATTACK_PICK] seat=3 score=0.596 key=(5,1,2,1) att=Muddy Island def=Inner Mud
+[COMBAT] Muddy Island (meerkat) vs Inner Mud (beaver) dice att[6] def[4] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.582 key=(5,1,2,2) att=Muddy Coast def=Mud Hills post=1 anchor=0.596 min_frac=0.90 gate=pass
+[COMBAT] Muddy Coast (meerkat) vs Mud Hills (beaver) dice att[5] def[3] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[CONTINENT] meerkat completed Mudflats; +6 pending deploy bonus
+[ATTACK_PICK] seat=3 chain_gate=fail post=2 score=0.375 anchor=0.596 min_frac=0.80
+[ATTACK_PICK] seat=4 score=0.182 key=(1,3,0,0) att=Old Trees def=Deep Forest
+[COMBAT] Old Trees (panda) vs Deep Forest (meerkat) dice att[5] def[2,2,1] units 1->1 / 3->1 conquered=True def_conq=False aod=True
+[ATTACK_PICK] seat=0 score=0.479 key=(3,2,1,1) att=Bush Island def=Wind Plains
+[COMBAT] Bush Island (beaver) vs Wind Plains (meerkat) dice att[4,2] def[5,2] units 3->1 / 2->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=98 stale_turns=1 seat=0(beaver) tiles=18 legal_attackers=16 opts=0 units={"Bamboo Ridge":2,"Bamboo Forest":2,"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Valley":2,"Bamboo Beach":2,"Wild Bamboo":2,"Bush Island":1,"Cold River":3,"Clear River":3,"Main River":2,"River Falls":2,"The Delta":2,"Stone Bridge":2,"Beaver Dam":2,"Stone Peak":1,"High Peak":2,"High Valley":2}
+[STALE_OPTS] step=98 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=98 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=98 stale_turns=1 seat=3(meerkat) tiles=17 legal_attackers=15 opts=0 units={"Frozen Mud":3,"Mud Hills":2,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Sacred Bamboo":5,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":2,"The Lookout":2,"Wind Plains":1,"Central Peak":4,"Wind Ridge":3,"Tree Island":3,"Crown Forest":2}
+[STALE_OPTS] step=98 stale_turns=1 seat=4(panda) tiles=2 legal_attackers=1 opts=0 units={"Deep Forest":2,"Old Trees":1}
+[ATTACK_PICK] seat=3 score=0.474 key=(5,1,2,0) att=Central Peak def=Stone Peak
+[COMBAT] Central Peak (meerkat) vs Stone Peak (beaver) dice att[3,3,2] def[3] units 4->3 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.205 key=(2,2,0,0) att=Deep Forest def=Crown Forest
+[COMBAT] Deep Forest (panda) vs Crown Forest (meerkat) dice att[2] def[4,3] units 2->1 / 2->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=0 score=0.308 key=(5,2,1,0) att=The Delta def=Mud Hills
+[COMBAT] The Delta (beaver) vs Mud Hills (meerkat) dice att[6] def[6,4] units 2->1 / 2->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=101 stale_turns=1 seat=0(beaver) tiles=17 legal_attackers=16 opts=0 units={"Bamboo Ridge":2,"Bamboo Forest":2,"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Valley":2,"Bamboo Beach":2,"Wild Bamboo":2,"Bush Island":1,"Cold River":2,"Clear River":2,"Main River":2,"River Falls":2,"The Delta":2,"Stone Bridge":3,"Beaver Dam":2,"High Peak":2,"High Valley":2}
+[STALE_OPTS] step=101 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=101 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=101 stale_turns=1 seat=3(meerkat) tiles=19 legal_attackers=15 opts=0 units={"Frozen Mud":3,"Mud Hills":1,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Sacred Bamboo":6,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":2,"The Lookout":2,"Wind Plains":1,"Stone Peak":2,"Central Peak":2,"Wind Ridge":3,"Tree Island":3,"Deep Forest":1,"Crown Forest":2}
+[STALE_OPTS] step=101 stale_turns=1 seat=4(panda) tiles=1 legal_attackers=0 opts=0 units={"Old Trees":1}
+[ATTACK_PICK] seat=3 score=0.474 key=(5,1,2,0) att=Inner Bush def=Bush Island
+[COMBAT] Inner Bush (meerkat) vs Bush Island (beaver) dice att[3] def[1] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[CONTINENT] meerkat completed Bushlands; +7 pending deploy bonus
+[ATTACK_PICK] seat=3 score=0.497 key=(5,2,2,3) att=Sacred Bamboo def=Wild Bamboo post=1 anchor=0.474 min_frac=0.90 gate=pass
+[COMBAT] Sacred Bamboo (meerkat) vs Wild Bamboo (beaver) dice att[6,4,1] def[6,1] units 6->5 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=4 score=0.174 key=(1,2,0,0) att=Old Trees def=Deep Forest
+[COMBAT] Old Trees (panda) vs Deep Forest (meerkat) dice att[3] def[6,6] units 1->1 / 2->2 conquered=False def_conq=True aod=True
+[CONTINENT] meerkat completed Eucalypta; +4 pending deploy bonus
+[ELIM] panda eliminated by meerkat; 6 cards transferred
+[ATTACK_PICK] seat=0 score=0.419 key=(5,3,1,3) att=Stone Bridge def=Stone Peak
+[COMBAT] Stone Bridge (beaver) vs Stone Peak (meerkat) dice att[5,3] def[5,2,2] units 3->2 / 3->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=104 stale_turns=1 seat=0(beaver) tiles=15 legal_attackers=15 opts=0 units={"Bamboo Ridge":2,"Bamboo Forest":2,"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Valley":2,"Bamboo Beach":2,"Cold River":2,"Clear River":2,"Main River":2,"River Falls":2,"The Delta":2,"Stone Bridge":2,"Beaver Dam":2,"High Peak":2,"High Valley":2}
+[STALE_OPTS] step=104 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=104 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=104 stale_turns=1 seat=3(meerkat) tiles=22 legal_attackers=17 opts=0 units={"Frozen Mud":3,"Mud Hills":3,"Inner Mud":2,"Muddy Island":3,"Muddy Coast":2,"Dark Mud":2,"Sacred Bamboo":4,"Wild Bamboo":3,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Stone Peak":1,"Central Peak":4,"Wind Ridge":5,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":1}
+[STALE_OPTS] step=104 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=3 score=0.496 key=(5,2,2,3) att=Wild Bamboo def=Bamboo Ridge
+[COMBAT] Wild Bamboo (meerkat) vs Bamboo Ridge (beaver) dice att[6,2] def[5,2] units 3->2 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.800 key=(5,5,1,3) att=Stone Bridge def=Stone Peak
+[COMBAT] Stone Bridge (beaver) vs Stone Peak (meerkat) dice att[5] def[4,3,3] units 2->2 / 5->4 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=106 stale_turns=1 seat=0(beaver) tiles=14 legal_attackers=14 opts=0 units={"Bamboo Forest":2,"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Valley":2,"Bamboo Beach":2,"Cold River":2,"Clear River":2,"Main River":2,"River Falls":2,"The Delta":2,"Stone Bridge":2,"Beaver Dam":2,"High Peak":2,"High Valley":2}
+[STALE_OPTS] step=106 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=106 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=106 stale_turns=1 seat=3(meerkat) tiles=23 legal_attackers=19 opts=0 units={"Frozen Mud":3,"Mud Hills":3,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Bamboo Ridge":3,"Sacred Bamboo":3,"Wild Bamboo":2,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Stone Peak":4,"Central Peak":5,"Wind Ridge":6,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":1}
+[STALE_OPTS] step=106 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=3 score=0.497 key=(5,2,2,3) att=Sacred Bamboo def=Bamboo Valley
+[COMBAT] Sacred Bamboo (meerkat) vs Bamboo Valley (beaver) dice att[5,4] def[5,1] units 3->2 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.826 key=(5,5,1,3) att=Stone Bridge def=Stone Peak
+[COMBAT] Stone Bridge (beaver) vs Stone Peak (meerkat) dice att[5] def[6,4,3] units 2->1 / 5->5 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=108 stale_turns=1 seat=0(beaver) tiles=13 legal_attackers=12 opts=0 units={"Bamboo Forest":2,"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Beach":2,"Cold River":2,"Clear River":2,"Main River":2,"River Falls":2,"The Delta":2,"Stone Bridge":1,"Beaver Dam":2,"High Peak":2,"High Valley":2}
+[STALE_OPTS] step=108 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=108 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=108 stale_turns=1 seat=3(meerkat) tiles=24 legal_attackers=19 opts=0 units={"Frozen Mud":3,"Mud Hills":3,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Bamboo Ridge":3,"Bamboo Valley":1,"Sacred Bamboo":2,"Wild Bamboo":2,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Stone Peak":5,"Central Peak":5,"Wind Ridge":6,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":1}
+[STALE_OPTS] step=108 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=3 score=0.497 key=(5,2,2,2) att=Bamboo Ridge def=Bamboo Forest
+[COMBAT] Bamboo Ridge (meerkat) vs Bamboo Forest (beaver) dice att[4,3] def[4,1] units 3->2 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.408 key=(5,1,1,0) att=Bamboo Mist def=Bamboo Forest
+[COMBAT] Bamboo Mist (beaver) vs Bamboo Forest (meerkat) dice att[1] def[3] units 2->1 / 1->1 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=3 score=0.376 key=(5,2,2,0) att=Mud Hills def=The Delta
+[COMBAT] Mud Hills (meerkat) vs The Delta (beaver) dice att[6,5] def[2,1] units 3->3 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.497 key=(5,2,2,3) att=The Delta def=Clear River post=1 anchor=0.376 min_frac=0.90 gate=pass
+[COMBAT] The Delta (meerkat) vs Clear River (beaver) dice att[5,3] def[6,4] units 3->1 / 2->2 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.494 key=(5,1,1,1) att=River Falls def=The Delta
+[COMBAT] River Falls (beaver) vs The Delta (meerkat) dice att[3] def[4] units 2->1 / 1->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=112 stale_turns=1 seat=0(beaver) tiles=10 legal_attackers=8 opts=0 units={"Outer Bamboo":2,"Bamboo Beach":2,"Cold River":2,"Clear River":2,"Main River":2,"River Falls":1,"Stone Bridge":1,"Beaver Dam":2,"High Peak":2,"High Valley":2}
+[STALE_OPTS] step=112 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=112 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=112 stale_turns=1 seat=3(meerkat) tiles=27 legal_attackers=20 opts=0 units={"Frozen Mud":2,"Mud Hills":2,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Bamboo Ridge":2,"Bamboo Forest":2,"Bamboo Mist":1,"Bamboo Valley":1,"Sacred Bamboo":2,"Wild Bamboo":2,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"The Delta":1,"Stone Peak":6,"Central Peak":6,"Wind Ridge":6,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":1}
+[STALE_OPTS] step=112 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=3 score=0.376 key=(5,2,2,0) att=Stone Peak def=High Peak
+[COMBAT] Stone Peak (meerkat) vs High Peak (beaver) dice att[2,2,1] def[3,2] units 6->4 / 2->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.494 key=(5,1,1,1) att=Beaver Dam def=The Delta
+[COMBAT] Beaver Dam (beaver) vs The Delta (meerkat) dice att[6] def[3] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[CONTINENT] beaver completed Riverside; +7 pending deploy bonus
+[ATTACK_PICK] seat=0 chain_gate=fail post=1 score=0.407 anchor=0.494 min_frac=0.90
+[ATTACK_PICK] seat=3 score=0.374 key=(5,2,2,0) att=Mud Hills def=The Delta
+[COMBAT] Mud Hills (meerkat) vs The Delta (beaver) dice att[6] def[6,2] units 2->1 / 2->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=115 stale_turns=1 seat=0(beaver) tiles=11 legal_attackers=8 opts=0 units={"Outer Bamboo":3,"Bamboo Beach":4,"Cold River":2,"Clear River":2,"Main River":2,"River Falls":1,"The Delta":1,"Stone Bridge":2,"Beaver Dam":1,"High Peak":3,"High Valley":4}
+[STALE_OPTS] step=115 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=115 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=115 stale_turns=1 seat=3(meerkat) tiles=26 legal_attackers=19 opts=0 units={"Frozen Mud":2,"Mud Hills":1,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Bamboo Ridge":2,"Bamboo Forest":2,"Bamboo Mist":1,"Bamboo Valley":1,"Sacred Bamboo":2,"Wild Bamboo":2,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Stone Peak":5,"Central Peak":5,"Wind Ridge":6,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":1}
+[STALE_OPTS] step=115 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=0 score=0.814 key=(5,5,1,3) att=High Peak def=Stone Peak
+[COMBAT] High Peak (beaver) vs Stone Peak (meerkat) dice att[2,1] def[6,6,3] units 3->1 / 5->5 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=3 score=0.485 key=(5,2,2,2) att=Stone Peak def=Stone Bridge
+[COMBAT] Stone Peak (meerkat) vs Stone Bridge (beaver) dice att[5,4,3] def[5,2] units 5->4 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.407 key=(5,1,1,0) att=Outer Bamboo def=Bamboo Valley
+[COMBAT] Outer Bamboo (beaver) vs Bamboo Valley (meerkat) dice att[5,3,1] def[2] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.408 key=(5,1,1,0) att=Bamboo Valley def=Bamboo Mist post=1 anchor=0.407 min_frac=0.90 gate=pass
+[COMBAT] Bamboo Valley (beaver) vs Bamboo Mist (meerkat) dice att[3,2,2] def[1] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 chain_gate=fail post=2 score=0.307 anchor=0.407 min_frac=0.80
+[ATTACK_PICK] seat=3 score=0.592 key=(5,1,2,1) att=Stone Bridge def=Beaver Dam
+[COMBAT] Stone Bridge (meerkat) vs Beaver Dam (beaver) dice att[3,2,2] def[3] units 4->3 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.309 key=(5,2,1,0) att=Main River def=Beaver Dam
+[COMBAT] Main River (beaver) vs Beaver Dam (meerkat) dice att[3] def[2,1] units 2->2 / 2->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=120 stale_turns=1 seat=0(beaver) tiles=10 legal_attackers=7 opts=0 units={"Bamboo Mist":3,"Outer Bamboo":2,"Bamboo Valley":3,"Bamboo Beach":4,"Cold River":1,"Clear River":2,"Main River":2,"River Falls":1,"The Delta":1,"High Valley":4}
+[STALE_OPTS] step=120 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=120 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=120 stale_turns=1 seat=3(meerkat) tiles=27 legal_attackers=21 opts=0 units={"Frozen Mud":2,"Mud Hills":1,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Bamboo Ridge":2,"Bamboo Forest":2,"Sacred Bamboo":2,"Wild Bamboo":2,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Stone Bridge":3,"Beaver Dam":1,"Stone Peak":3,"High Peak":3,"Central Peak":4,"Wind Ridge":5,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":1}
+[STALE_OPTS] step=120 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=3 score=0.546 key=(5,3,2,2) att=Bamboo Forest def=Bamboo Mist
+[COMBAT] Bamboo Forest (meerkat) vs Bamboo Mist (beaver) dice att[3] def[3,2,1] units 2->1 / 3->2 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.408 key=(5,1,1,0) att=Bamboo Valley def=Bamboo Forest
+[COMBAT] Bamboo Valley (beaver) vs Bamboo Forest (meerkat) dice att[5,3,1] def[4] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 chain_gate=fail post=1 score=0.308 anchor=0.408 min_frac=0.90
+[ATTACK_PICK] seat=3 score=0.473 key=(5,1,2,0) att=Beaver Dam def=River Falls
+[COMBAT] Beaver Dam (meerkat) vs River Falls (beaver) dice att[1] def[2] units 2->1 / 1->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=123 stale_turns=1 seat=0(beaver) tiles=11 legal_attackers=9 opts=0 units={"Bamboo Forest":2,"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Valley":3,"Bamboo Beach":3,"Cold River":1,"Clear River":2,"Main River":2,"River Falls":1,"The Delta":2,"High Valley":4}
+[STALE_OPTS] step=123 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=123 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=123 stale_turns=1 seat=3(meerkat) tiles=26 legal_attackers=20 opts=0 units={"Frozen Mud":2,"Mud Hills":1,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Bamboo Ridge":2,"Sacred Bamboo":2,"Wild Bamboo":2,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Stone Bridge":2,"Beaver Dam":1,"Stone Peak":3,"High Peak":3,"Central Peak":4,"Wind Ridge":5,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":1}
+[STALE_OPTS] step=123 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=0 score=0.409 key=(5,1,1,0) att=The Delta def=Mud Hills
+[COMBAT] The Delta (beaver) vs Mud Hills (meerkat) dice att[3] def[1] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.409 key=(5,1,1,0) att=Main River def=Beaver Dam post=1 anchor=0.409 min_frac=0.90 gate=pass
+[COMBAT] Main River (beaver) vs Beaver Dam (meerkat) dice att[4,1] def[2] units 3->3 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 chain_gate=fail post=2 score=0.310 anchor=0.409 min_frac=0.80
+[ATTACK_PICK] seat=3 score=0.493 key=(5,2,2,2) att=Sacred Bamboo def=Bamboo Forest
+[COMBAT] Sacred Bamboo (meerkat) vs Bamboo Forest (beaver) dice att[2] def[3,3] units 2->1 / 2->2 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=125 stale_turns=1 seat=0(beaver) tiles=13 legal_attackers=10 opts=0 units={"Mud Hills":2,"Bamboo Forest":2,"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Valley":3,"Bamboo Beach":4,"Cold River":1,"Clear River":1,"Main River":2,"River Falls":1,"The Delta":2,"Beaver Dam":2,"High Valley":4}
+[STALE_OPTS] step=125 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=125 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=125 stale_turns=1 seat=3(meerkat) tiles=24 legal_attackers=19 opts=0 units={"Frozen Mud":2,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Bamboo Ridge":2,"Sacred Bamboo":1,"Wild Bamboo":2,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Stone Bridge":2,"Stone Peak":3,"High Peak":3,"Central Peak":4,"Wind Ridge":5,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":1}
+[STALE_OPTS] step=125 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=0 score=0.409 key=(5,1,1,0) att=Bamboo Beach def=Sacred Bamboo
+[COMBAT] Bamboo Beach (beaver) vs Sacred Bamboo (meerkat) dice att[3,3,2] def[6] units 4->1 / 1->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.492 key=(5,2,2,2) att=Muddy Coast def=Mud Hills
+[COMBAT] Muddy Coast (meerkat) vs Mud Hills (beaver) dice att[6] def[6,5] units 2->1 / 2->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.408 key=(5,1,1,0) att=Bamboo Forest def=Sacred Bamboo
+[COMBAT] Bamboo Forest (beaver) vs Sacred Bamboo (meerkat) dice att[5,3,2] def[1] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 chain_gate=fail post=1 score=0.308 anchor=0.408 min_frac=0.90
+[ATTACK_PICK] seat=3 score=0.492 key=(5,2,2,2) att=Bamboo Ridge def=Bamboo Forest
+[COMBAT] Bamboo Ridge (meerkat) vs Bamboo Forest (beaver) dice att[3] def[6,5] units 2->1 / 2->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=0 score=0.307 key=(5,2,1,0) att=Sacred Bamboo def=Wild Bamboo
+[COMBAT] Sacred Bamboo (beaver) vs Wild Bamboo (meerkat) dice att[1] def[4,2] units 2->1 / 2->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=3 score=0.587 key=(5,1,2,3) att=Muddy Island def=Bamboo Ridge
+[COMBAT] Muddy Island (meerkat) vs Bamboo Ridge (beaver) dice att[4,2,1] def[2] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 chain_gate=fail post=1 score=0.491 anchor=0.587 min_frac=0.90
+[ATTACK_PICK] seat=0 score=0.309 key=(5,2,1,0) att=Bamboo Valley def=Sacred Bamboo
+[COMBAT] Bamboo Valley (beaver) vs Sacred Bamboo (meerkat) dice att[5] def[1,1] units 2->2 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.308 key=(5,2,1,0) att=Sacred Bamboo def=Wild Bamboo post=1 anchor=0.309 min_frac=0.90 gate=pass
+[COMBAT] Sacred Bamboo (beaver) vs Wild Bamboo (meerkat) dice att[5] def[3,1] units 2->2 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.308 key=(5,2,1,0) att=Main River def=Stone Bridge post=2 anchor=0.309 min_frac=0.80 gate=pass
+[COMBAT] Main River (beaver) vs Stone Bridge (meerkat) dice att[6] def[5,1] units 2->2 / 2->1 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.590 key=(5,1,2,1) att=Bamboo Ridge def=Sacred Bamboo
+[COMBAT] Bamboo Ridge (meerkat) vs Sacred Bamboo (beaver) dice att[6,5,1] def[4] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.588 key=(5,1,2,3) att=Sacred Bamboo def=Bamboo Valley post=1 anchor=0.590 min_frac=0.90 gate=pass
+[COMBAT] Sacred Bamboo (meerkat) vs Bamboo Valley (beaver) dice att[6,3,2] def[6] units 4->3 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.310 key=(5,2,1,0) att=Main River def=Stone Bridge
+[COMBAT] Main River (beaver) vs Stone Bridge (meerkat) dice att[6] def[6,4] units 2->1 / 2->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=134 stale_turns=1 seat=0(beaver) tiles=13 legal_attackers=9 opts=0 units={"Mud Hills":1,"Bamboo Forest":2,"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Beach":2,"Wild Bamboo":2,"Cold River":1,"Clear River":2,"Main River":1,"River Falls":1,"The Delta":2,"Beaver Dam":2,"High Valley":6}
+[STALE_OPTS] step=134 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=134 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=134 stale_turns=1 seat=3(meerkat) tiles=24 legal_attackers=17 opts=0 units={"Frozen Mud":2,"Inner Mud":2,"Muddy Island":1,"Muddy Coast":2,"Dark Mud":1,"Bamboo Ridge":2,"Bamboo Valley":2,"Sacred Bamboo":2,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Stone Bridge":1,"Stone Peak":3,"High Peak":3,"Central Peak":4,"Wind Ridge":4,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":1}
+[STALE_OPTS] step=134 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=3 score=0.583 key=(5,1,2,2) att=Muddy Coast def=Mud Hills
+[COMBAT] Muddy Coast (meerkat) vs Mud Hills (beaver) dice att[6] def[2] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[CONTINENT] meerkat completed Mudflats; +6 pending deploy bonus
+[ATTACK_PICK] seat=3 chain_gate=fail post=1 score=0.495 anchor=0.583 min_frac=0.90
+[ATTACK_PICK] seat=0 score=0.309 key=(5,2,1,0) att=The Delta def=Mud Hills
+[COMBAT] The Delta (beaver) vs Mud Hills (meerkat) dice att[3] def[6,4] units 2->1 / 2->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=3 score=0.472 key=(5,1,2,0) att=Stone Bridge def=Main River
+[COMBAT] Stone Bridge (meerkat) vs Main River (beaver) dice att[6,2] def[2] units 3->3 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.473 key=(5,1,2,0) att=Main River def=River Falls post=1 anchor=0.472 min_frac=0.90 gate=pass
+[COMBAT] Main River (meerkat) vs River Falls (beaver) dice att[5,3] def[4] units 3->3 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.492 key=(5,2,2,3) att=River Falls def=Clear River post=2 anchor=0.472 min_frac=0.80 gate=pass
+[COMBAT] River Falls (meerkat) vs Clear River (beaver) dice att[6,1] def[1,1] units 3->2 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.391 key=(5,3,1,1) att=High Valley def=High Peak
+[COMBAT] High Valley (beaver) vs High Peak (meerkat) dice att[6,6,3] def[6,4,3] units 6->4 / 3->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.599 key=(5,1,2,1) att=Main River def=Cold River
+[COMBAT] Main River (meerkat) vs Cold River (beaver) dice att[4,3,1] def[1] units 4->4 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.556 key=(5,3,2,2) att=Bamboo Valley def=Bamboo Forest post=1 anchor=0.599 min_frac=0.90 gate=pass
+[COMBAT] Bamboo Valley (meerkat) vs Bamboo Forest (beaver) dice att[4,2] def[5,4,1] units 3->1 / 3->3 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=0 score=0.556 key=(2,1,1,2) att=Beaver Dam def=River Falls
+[COMBAT] Beaver Dam (beaver) vs River Falls (meerkat) dice att[4] def[4] units 2->1 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.598 key=(5,1,2,1) att=Stone Bridge def=Beaver Dam
+[COMBAT] Stone Bridge (meerkat) vs Beaver Dam (beaver) dice att[4] def[6] units 2->1 / 1->1 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=0 score=0.308 key=(5,2,1,0) att=Bamboo Forest def=Bamboo Ridge
+[COMBAT] Bamboo Forest (beaver) vs Bamboo Ridge (meerkat) dice att[4] def[5,1] units 2->1 / 2->2 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=142 stale_turns=1 seat=0(beaver) tiles=11 legal_attackers=7 opts=0 units={"Bamboo Forest":1,"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Valley":2,"Bamboo Beach":3,"Wild Bamboo":3,"River Falls":1,"Stone Bridge":1,"Beaver Dam":1,"High Peak":3,"High Valley":3}
+[STALE_OPTS] step=142 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=142 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=142 stale_turns=1 seat=3(meerkat) tiles=26 legal_attackers=21 opts=0 units={"Frozen Mud":3,"Mud Hills":2,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":1,"Bamboo Ridge":2,"Sacred Bamboo":3,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Cold River":2,"Clear River":2,"Main River":2,"The Delta":2,"Stone Peak":3,"Central Peak":4,"Wind Ridge":5,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":1}
+[STALE_OPTS] step=142 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=3 score=0.599 key=(5,1,2,1) att=The Delta def=Beaver Dam
+[COMBAT] The Delta (meerkat) vs Beaver Dam (beaver) dice att[2] def[4] units 2->1 / 1->1 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=0 score=0.308 key=(5,2,1,0) att=Bamboo Valley def=Sacred Bamboo
+[COMBAT] Bamboo Valley (beaver) vs Sacred Bamboo (meerkat) dice att[4] def[5,1] units 2->1 / 2->2 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=144 stale_turns=1 seat=0(beaver) tiles=12 legal_attackers=7 opts=0 units={"Bamboo Forest":1,"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Valley":2,"Bamboo Beach":2,"Wild Bamboo":3,"River Falls":1,"The Delta":1,"Stone Bridge":1,"Beaver Dam":1,"High Peak":4,"High Valley":3}
+[STALE_OPTS] step=144 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=144 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=144 stale_turns=1 seat=3(meerkat) tiles=25 legal_attackers=20 opts=0 units={"Frozen Mud":3,"Mud Hills":2,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":1,"Bamboo Ridge":3,"Sacred Bamboo":2,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Cold River":2,"Clear River":2,"Main River":2,"Stone Peak":3,"Central Peak":4,"Wind Ridge":5,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":1}
+[STALE_OPTS] step=144 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=3 score=0.584 key=(5,1,2,2) att=Sacred Bamboo def=Bamboo Forest
+[COMBAT] Sacred Bamboo (meerkat) vs Bamboo Forest (beaver) dice att[4] def[2] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 chain_gate=fail post=1 score=0.472 anchor=0.584 min_frac=0.90
+[ATTACK_PICK] seat=0 score=0.309 key=(5,2,1,0) att=Bamboo Valley def=Sacred Bamboo
+[COMBAT] Bamboo Valley (beaver) vs Sacred Bamboo (meerkat) dice att[5] def[5,2] units 2->1 / 2->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=146 stale_turns=1 seat=0(beaver) tiles=11 legal_attackers=6 opts=0 units={"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Valley":1,"Bamboo Beach":2,"Wild Bamboo":3,"River Falls":1,"The Delta":1,"Stone Bridge":1,"Beaver Dam":1,"High Peak":4,"High Valley":3}
+[STALE_OPTS] step=146 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=146 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=146 stale_turns=1 seat=3(meerkat) tiles=26 legal_attackers=21 opts=0 units={"Frozen Mud":3,"Mud Hills":2,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":1,"Bamboo Ridge":2,"Bamboo Forest":2,"Sacred Bamboo":1,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Cold River":2,"Clear River":2,"Main River":2,"Stone Peak":4,"Central Peak":4,"Wind Ridge":4,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":2}
+[STALE_OPTS] step=146 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=3 score=0.590 key=(5,1,2,3) att=Bamboo Forest def=Bamboo Valley
+[COMBAT] Bamboo Forest (meerkat) vs Bamboo Valley (beaver) dice att[4,2] def[1] units 3->3 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 chain_gate=fail post=1 score=0.473 anchor=0.590 min_frac=0.90
+[ATTACK_PICK] seat=0 score=0.325 key=(5,4,1,0) att=High Valley def=Central Peak
+[COMBAT] High Valley (beaver) vs Central Peak (meerkat) dice att[4,2] def[6,5,3] units 3->1 / 4->4 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=3 score=0.472 key=(5,1,2,0) att=Mud Hills def=The Delta
+[COMBAT] Mud Hills (meerkat) vs The Delta (beaver) dice att[5] def[1] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.598 key=(5,1,2,1) att=Main River def=Beaver Dam post=1 anchor=0.472 min_frac=0.90 gate=pass
+[COMBAT] Main River (meerkat) vs Beaver Dam (beaver) dice att[4] def[3] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.585 key=(5,1,2,2) att=Beaver Dam def=Stone Bridge post=2 anchor=0.472 min_frac=0.80 gate=pass
+[COMBAT] Beaver Dam (meerkat) vs Stone Bridge (beaver) dice att[6] def[5] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 score=0.473 key=(5,1,2,0) att=The Delta def=River Falls post=3 anchor=0.472 min_frac=0.70 gate=pass
+[COMBAT] The Delta (meerkat) vs River Falls (beaver) dice att[4] def[3] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[CONTINENT] meerkat completed Riverside; +7 pending deploy bonus
+[ATTACK_PICK] seat=3 score=0.492 key=(5,2,2,2) att=Bamboo Forest def=Bamboo Mist post=4 anchor=0.472 min_frac=0.60 gate=pass
+[COMBAT] Bamboo Forest (meerkat) vs Bamboo Mist (beaver) dice att[3] def[4,4] units 2->1 / 2->2 conquered=False def_conq=False aod=False
+[ATTACK_PICK] seat=0 score=0.632 key=(4,3,1,3) att=High Peak def=Stone Peak
+[COMBAT] High Peak (beaver) vs Stone Peak (meerkat) dice att[6,4,3] def[6,5,3] units 4->1 / 3->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=150 stale_turns=1 seat=0(beaver) tiles=5 legal_attackers=4 opts=0 units={"Bamboo Mist":2,"Outer Bamboo":2,"Bamboo Beach":2,"Wild Bamboo":3,"High Peak":1}
+[STALE_OPTS] step=150 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=150 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=150 stale_turns=1 seat=3(meerkat) tiles=32 legal_attackers=27 opts=0 units={"Frozen Mud":2,"Mud Hills":2,"Inner Mud":2,"Muddy Island":2,"Muddy Coast":2,"Dark Mud":2,"Bamboo Ridge":3,"Bamboo Forest":4,"Bamboo Valley":4,"Sacred Bamboo":4,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Cold River":2,"Clear River":2,"Main River":2,"River Falls":2,"The Delta":1,"Stone Bridge":2,"Beaver Dam":2,"Stone Peak":1,"High Valley":3,"Central Peak":3,"Wind Ridge":4,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":2}
+[STALE_OPTS] step=150 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=3 score=0.473 key=(5,1,2,0) att=High Valley def=High Peak
+[COMBAT] High Valley (meerkat) vs High Peak (beaver) dice att[5] def[5] units 2->1 / 1->1 conquered=True def_conq=False aod=False
+[CONTINENT] meerkat completed Peaks; +4 pending deploy bonus
+[ATTACK_PICK] seat=0 score=0.413 key=(3,5,1,0) att=Outer Bamboo def=Bamboo Valley
+[COMBAT] Outer Bamboo (beaver) vs Bamboo Valley (meerkat) dice att[6,5] def[6,2,1] units 3->2 / 5->1 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=152 stale_turns=1 seat=0(beaver) tiles=4 legal_attackers=3 opts=0 units={"Bamboo Mist":1,"Outer Bamboo":2,"Bamboo Beach":2,"Wild Bamboo":3}
+[STALE_OPTS] step=152 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=152 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=152 stale_turns=1 seat=3(meerkat) tiles=33 legal_attackers=28 opts=0 units={"Frozen Mud":2,"Mud Hills":2,"Inner Mud":2,"Muddy Island":3,"Muddy Coast":2,"Dark Mud":2,"Bamboo Ridge":4,"Bamboo Forest":5,"Bamboo Valley":1,"Sacred Bamboo":5,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Cold River":2,"Clear River":2,"Main River":2,"River Falls":2,"The Delta":1,"Stone Bridge":2,"Beaver Dam":2,"Stone Peak":2,"High Peak":2,"High Valley":2,"Central Peak":2,"Wind Ridge":3,"Tree Island":3,"Deep Forest":2,"Crown Forest":2,"Old Trees":2}
+[STALE_OPTS] step=152 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=3 score=0.578 key=(5,1,2,2) att=Bamboo Forest def=Bamboo Mist
+[COMBAT] Bamboo Forest (meerkat) vs Bamboo Mist (beaver) dice att[6,6,5] def[5] units 5->5 / 1->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 chain_gate=fail post=1 score=0.496 anchor=0.578 min_frac=0.90
+[ATTACK_PICK] seat=0 score=0.285 key=(3,3,1,0) att=Wild Bamboo def=Tree Island
+[COMBAT] Wild Bamboo (beaver) vs Tree Island (meerkat) dice att[4,1] def[4,4,1] units 3->1 / 3->2 conquered=False def_conq=True aod=False
+[ATTACK_PICK] seat=3 score=0.449 key=(5,2,2,1) att=Cold River def=Outer Bamboo
+[COMBAT] Cold River (meerkat) vs Outer Bamboo (beaver) dice att[6,4] def[4,3] units 3->3 / 2->1 conquered=True def_conq=False aod=False
+[ATTACK_PICK] seat=3 chain_gate=fail post=1 score=0.374 anchor=0.449 min_frac=0.90
+[ATTACK_PICK] seat=0 score=0.257 key=(2,3,1,0) att=Bamboo Beach def=Bamboo Valley
+[COMBAT] Bamboo Beach (beaver) vs Bamboo Valley (meerkat) dice att[2] def[2,2,1] units 2->1 / 3->2 conquered=False def_conq=False aod=False
+[STALE_OPTS] step=156 stale_turns=1 seat=0(beaver) tiles=1 legal_attackers=0 opts=0 units={"Bamboo Beach":1}
+[STALE_OPTS] step=156 stale_turns=1 seat=1(koala) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=156 stale_turns=1 seat=2(llama) tiles=0 legal_attackers=0 opts=0 units={}
+[STALE_OPTS] step=156 stale_turns=1 seat=3(meerkat) tiles=36 legal_attackers=33 opts=0 units={"Frozen Mud":2,"Mud Hills":2,"Inner Mud":2,"Muddy Island":3,"Muddy Coast":2,"Dark Mud":2,"Bamboo Ridge":3,"Bamboo Forest":3,"Bamboo Mist":3,"Outer Bamboo":3,"Bamboo Valley":2,"Sacred Bamboo":3,"Wild Bamboo":2,"Thorn Bush":2,"Sun Hollow":1,"Dry Basin":2,"Inner Bush":1,"The Lookout":2,"Wind Plains":1,"Bush Island":2,"Cold River":2,"Clear River":2,"Main River":2,"River Falls":2,"The Delta":2,"Stone Bridge":2,"Beaver Dam":2,"Stone Peak":2,"High Peak":2,"High Valley":2,"Central Peak":2,"Wind Ridge":3,"Tree Island":2,"Deep Forest":2,"Crown Forest":2,"Old Trees":2}
+[STALE_OPTS] step=156 stale_turns=1 seat=4(panda) tiles=0 legal_attackers=0 opts=0 units={}
+[ATTACK_PICK] seat=3 score=0.471 key=(5,1,2,0) att=Bamboo Valley def=Bamboo Beach
+[COMBAT] Bamboo Valley (meerkat) vs Bamboo Beach (beaver) dice att[5] def[3] units 2->2 / 1->1 conquered=True def_conq=False aod=False
+[CONTINENT] meerkat completed Bamboovia; +8 pending deploy bonus
+[ELIM] beaver eliminated by meerkat; 12 cards transferred
+[WIN] meerkat (seat 3) elimination_mission | Elimination Mission — Eliminate Beaver. If Beaver is eliminated by another player, that player becomes your new target. This continues until you eliminate your current target or capture 20 territories. | mission_id=eBeaver mission_type=elimination
+[STALEMATE_SUMMARY] {"runs":39,"total_stale_turns":56,"longest":4,"events":[{"start_step":0,"tiles_start":{"beaver":8,"koala":8,"llama":7,"meerkat":7,"panda":7},"end_step":1,"duration":1,"tiles_end":{"beaver":7,"koala":9,"llama":7,"meerkat":7,"panda":7}},{"start_step":6,"tiles_start":{"beaver":9,"koala":3,"llama":8,"meerkat":8,"panda":9},"end_step":7,"duration":1,"tiles_end":{"beaver":9,"koala":2,"llama":9,"meerkat":8,"panda":9}},{"start_step":9,"tiles_start":{"beaver":8,"koala":2,"llama":9,"meerkat":9,"panda":9},"end_step":10,"duration":1,"tiles_end":{"beaver":9,"koala":1,"llama":9,"meerkat":9,"panda":9}},{"start_step":15,"tiles_start":{"beaver":10,"koala":0,"llama":7,"meerkat":11,"panda":9},"end_step":17,"duration":2,"tiles_end":{"beaver":8,"koala":0,"llama":6,"meerkat":14,"panda":9}},{"start_step":19,"tiles_start":{"beaver":8,"koala":0,"llama":6,"meerkat":13,"panda":10},"end_step":20,"duration":1,"tiles_end":{"beaver":9,"koala":0,"llama":5,"meerkat":13,"panda":10}},{"start_step":23,"tiles_start":{"beaver":10,"koala":0,"llama":5,"meerkat":13,"panda":9},"end_step":24,"duration":1,"tiles_end":{"beaver":10,"koala":0,"llama":6,"meerkat":13,"panda":8}},{"start_step":25,"tiles_start":{"beaver":10,"koala":0,"llama":6,"meerkat":13,"panda":8},"end_step":27,"duration":2,"tiles_end":{"beaver":11,"koala":0,"llama":6,"meerkat":12,"panda":8}},{"start_step":28,"tiles_start":{"beaver":11,"koala":0,"llama":6,"meerkat":12,"panda":8},"end_step":31,"duration":3,"tiles_end":{"beaver":10,"koala":0,"llama":6,"meerkat":13,"panda":8}},{"start_step":34,"tiles_start":{"beaver":10,"koala":0,"llama":7,"meerkat":12,"panda":8},"end_step":35,"duration":1,"tiles_end":{"beaver":11,"koala":0,"llama":8,"meerkat":11,"panda":7}},{"start_step":36,"tiles_start":{"beaver":11,"koala":0,"llama":8,"meerkat":11,"panda":7},"end_step":38,"duration":2,"tiles_end":{"beaver":10,"koala":0,"llama":8,"meerkat":11,"panda":8}},{"start_step":39,"tiles_start":{"beaver":10,"koala":0,"llama":8,"meerkat":11,"panda":8},"end_step":42,"duration":3,"tiles_end":{"beaver":11,"koala":0,"llama":8,"meerkat":10,"panda":8}},{"start_step":46,"tiles_start":{"beaver":10,"koala":0,"llama":7,"meerkat":12,"panda":8},"end_step":47,"duration":1,"tiles_end":{"beaver":12,"koala":0,"llama":6,"meerkat":12,"panda":7}},{"start_step":48,"tiles_start":{"beaver":12,"koala":0,"llama":6,"meerkat":12,"panda":7},"end_step":51,"duration":3,"tiles_end":{"beaver":13,"koala":0,"llama":5,"meerkat":12,"panda":7}},{"start_step":52,"tiles_start":{"beaver":13,"koala":0,"llama":5,"meerkat":12,"panda":7},"end_step":53,"duration":1,"tiles_end":{"beaver":13,"koala":0,"llama":4,"meerkat":13,"panda":7}},{"start_step":54,"tiles_start":{"beaver":13,"koala":0,"llama":4,"meerkat":13,"panda":7},"end_step":55,"duration":1,"tiles_end":{"beaver":12,"koala":0,"llama":5,"meerkat":13,"panda":7}},{"start_step":56,"tiles_start":{"beaver":12,"koala":0,"llama":5,"meerkat":13,"panda":7},"end_step":57,"duration":1,"tiles_end":{"beaver":12,"koala":0,"llama":5,"meerkat":12,"panda":8}},{"start_step":58,"tiles_start":{"beaver":12,"koala":0,"llama":5,"meerkat":12,"panda":8},"end_step":62,"duration":4,"tiles_end":{"beaver":12,"koala":0,"llama":5,"meerkat":11,"panda":9}},{"start_step":66,"tiles_start":{"beaver":14,"koala":0,"llama":3,"meerkat":12,"panda":8},"end_step":67,"duration":1,"tiles_end":{"beaver":15,"koala":0,"llama":3,"meerkat":12,"panda":7}},{"start_step":72,"tiles_start":{"beaver":13,"koala":0,"llama":2,"meerkat":15,"panda":7},"end_step":74,"duration":2,"tiles_end":{"beaver":14,"koala":0,"llama":2,"meerkat":15,"panda":6}},{"start_step":78,"tiles_start":{"beaver":15,"koala":0,"llama":1,"meerkat":15,"panda":6},"end_step":79,"duration":1,"tiles_end":{"beaver":17,"koala":0,"llama":1,"meerkat":13,"panda":6}},{"start_step":90,"tiles_start":{"beaver":20,"koala":0,"llama":0,"meerkat":14,"panda":3},"end_step":91,"duration":1,"tiles_end":{"beaver":20,"koala":0,"llama":0,"meerkat":15,"panda":2}},{"start_step":95,"tiles_start":{"beaver":20,"koala":0,"llama":0,"meerkat":16,"panda":1},"end_step":96,"duration":1,"tiles_end":{"beaver":18,"koala":0,"llama":0,"meerkat":18,"panda":1}},{"start_step":98,"tiles_start":{"beaver":18,"koala":0,"llama":0,"meerkat":17,"panda":2},"end_step":99,"duration":1,"tiles_end":{"beaver":17,"koala":0,"llama":0,"meerkat":18,"panda":2}},{"start_step":101,"tiles_start":{"beaver":17,"koala":0,"llama":0,"meerkat":19,"panda":1},"end_step":102,"duration":1,"tiles_end":{"beaver":15,"koala":0,"llama":0,"meerkat":21,"panda":1}},{"start_step":104,"tiles_start":{"beaver":15,"koala":0,"llama":0,"meerkat":22,"panda":0},"end_step":105,"duration":1,"tiles_end":{"beaver":14,"koala":0,"llama":0,"meerkat":23,"panda":0}},{"start_step":106,"tiles_start":{"beaver":14,"koala":0,"llama":0,"meerkat":23,"panda":0},"end_step":107,"duration":1,"tiles_end":{"beaver":13,"koala":0,"llama":0,"meerkat":24,"panda":0}},{"start_step":108,"tiles_start":{"beaver":13,"koala":0,"llama":0,"meerkat":24,"panda":0},"end_step":109,"duration":1,"tiles_end":{"beaver":12,"koala":0,"llama":0,"meerkat":25,"panda":0}},{"start_step":112,"tiles_start":{"beaver":10,"koala":0,"llama":0,"meerkat":27,"panda":0},"end_step":114,"duration":2,"tiles_end":{"beaver":11,"koala":0,"llama":0,"meerkat":26,"panda":0}},{"start_step":115,"tiles_start":{"beaver":11,"koala":0,"llama":0,"meerkat":26,"panda":0},"end_step":116,"duration":1,"tiles_end":{"beaver":10,"koala":0,"llama":0,"meerkat":27,"panda":0}},{"start_step":120,"tiles_start":{"beaver":10,"koala":0,"llama":0,"meerkat":27,"panda":0},"end_step":122,"duration":2,"tiles_end":{"beaver":11,"koala":0,"llama":0,"meerkat":26,"panda":0}},{"start_step":123,"tiles_start":{"beaver":11,"koala":0,"llama":0,"meerkat":26,"panda":0},"end_step":124,"duration":1,"tiles_end":{"beaver":13,"koala":0,"llama":0,"meerkat":24,"panda":0}},{"start_step":125,"tiles_start":{"beaver":13,"koala":0,"llama":0,"meerkat":24,"panda":0},"end_step":128,"duration":3,"tiles_end":{"beaver":14,"koala":0,"llama":0,"meerkat":23,"panda":0}},{"start_step":134,"tiles_start":{"beaver":13,"koala":0,"llama":0,"meerkat":24,"panda":0},"end_step":135,"duration":1,"tiles_end":{"beaver":12,"koala":0,"llama":0,"meerkat":25,"panda":0}},{"start_step":142,"tiles_start":{"beaver":11,"koala":0,"llama":0,"meerkat":26,"panda":0},"end_step":143,"duration":1,"tiles_end":{"beaver":12,"koala":0,"llama":0,"meerkat":25,"panda":0}},{"start_step":144,"tiles_start":{"beaver":12,"koala":0,"llama":0,"meerkat":25,"panda":0},"end_step":145,"duration":1,"tiles_end":{"beaver":11,"koala":0,"llama":0,"meerkat":26,"panda":0}},{"start_step":146,"tiles_start":{"beaver":11,"koala":0,"llama":0,"meerkat":26,"panda":0},"end_step":147,"duration":1,"tiles_end":{"beaver":10,"koala":0,"llama":0,"meerkat":27,"panda":0}},{"start_step":150,"tiles_start":{"beaver":5,"koala":0,"llama":0,"meerkat":32,"panda":0},"end_step":151,"duration":1,"tiles_end":{"beaver":4,"koala":0,"llama":0,"meerkat":33,"panda":0}},{"start_step":152,"tiles_start":{"beaver":4,"koala":0,"llama":0,"meerkat":33,"panda":0},"end_step":153,"duration":1,"tiles_end":{"beaver":3,"koala":0,"llama":0,"meerkat":34,"panda":0}},{"start_step":156,"tiles_start":{"beaver":1,"koala":0,"llama":0,"meerkat":36,"panda":0}}]}

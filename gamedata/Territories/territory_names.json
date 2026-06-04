@@ -1,0 +1,8 @@
+{
+    "Mudflats": ["Frozen Mud", "Mud Hills", "Inner Mud", "Muddy Island", "Muddy Coast", "Dark Mud"],
+    "Bamboovia": ["Bamboo Ridge", "Bamboo Forest", "Bamboo Mist", "Outer Bamboo", "Bamboo Valley", "Bamboo Beach", "Sacred Bamboo", "Wild Bamboo"],
+    "Riverside": ["Cold River", "Clear River", "Main River", "River Falls", "The Delta", "Stone Bridge", "Beaver Dam"],
+    "Peaks": ["Stone Peak", "High Peak", "High Valley", "Central Peak", "Wind Ridge"],
+    "Bushlands": ["Thorn Bush", "Sun Hollow", "Dry Basin", "Inner Bush", "The Lookout", "Wind Plains", "Bush Island"],
+    "Eucalypta": ["Tree Island", "Deep Forest", "Crown Forest", "Old Trees"]
+}

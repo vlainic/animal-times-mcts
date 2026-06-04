@@ -1,0 +1,331 @@
+Godot Engine v4.3.stable.official.77dcf97d8 - https://godotengine.org
+OpenGL API 4.1 ATI-7.1.6 - Compatibility - Using Device: ATI Technologies Inc. - AMD Radeon Pro 5300M OpenGL Engine
+
+WARNING: No hand_display found or no cards to position for player LocalPlayer
+  hand_display:true
+  card_count:0
+WARNING: No hand_display found or no cards to position for player merkaat
+  hand_display:true
+  card_count:0
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+SERVER: ERROR - Bot player not found or no deployment signal
+Awarding conquest card to eliminator:1
+USER ERROR: Attempt to call RPC with unknown peer ID: 1001.
+   at: _send_rpc (modules/multiplayer/scene_rpc_interface.cpp:307)
+MPScene: Paused server for victory/defeat
+USER ERROR: The multiplayer instance is already active.
+   at: create_server (modules/enet/enet_multiplayer_peer.cpp:65)
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+SERVER: ERROR - Bot player not found or no deployment signal
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+USER ERROR: Attempt to call RPC with unknown peer ID: 1000.
+   at: _send_rpc (modules/multiplayer/scene_rpc_interface.cpp:307)
+Awarding conquest card to eliminator:1001
+USER ERROR: Attempt to call RPC with unknown peer ID: 1000.
+   at: _send_rpc (modules/multiplayer/scene_rpc_interface.cpp:307)
+SERVER: ERROR - Bot player not found or no deployment signal
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+WARNING: No hand_display found or no cards to position for player LocalPlayer
+  hand_display:true
+  card_count:0
+WARNING: No hand_display found or no cards to position for player koala
+  hand_display:true
+  card_count:0
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+USER ERROR: Attempt to call RPC with unknown peer ID: 1001.
+   at: _send_rpc (modules/multiplayer/scene_rpc_interface.cpp:307)
+MPScene: Paused server for victory/defeat
+Awarding conquest card to eliminator:1
+MPScene: Paused server for victory/defeat
+USER ERROR: Attempting to make child window exclusive, but the parent window already has another exclusive child. This window: /root/MultiplayerScene/@AcceptDialog@5518, parent window: /root, current exclusive child window: /root/MultiplayerScene/@AcceptDialog@5511
+   at: _set_transient_exclusive_child (scene/main/window.cpp:949)
+USER ERROR: The multiplayer instance is already active.
+   at: create_server (modules/enet/enet_multiplayer_peer.cpp:65)
+SERVER: ERROR - Bot player not found or no deployment signal
+SERVER: ERROR - Bot player not found or no deployment signal
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+Server: Unknown card type for card: @node2d@6071
+Server: Unknown card type for card: @node2d@6071
+Server: Unknown card type for card: @node2d@6071
+Server: Unknown card type for card: @node2d@6071
+Server: Unknown card type for card: @node2d@6071
+Server: Unknown card type for card: @node2d@6071
+Server: Unknown card type for card: @node2d@6071
+Server: Unknown card type for card: @node2d@6071
+SERVER: ERROR - Bot player not found or no deployment signal
+SERVER: ERROR - Bot player not found or no deployment signal
+WARNING: No hand_display found or no cards to position for player LocalPlayer
+  hand_display:true
+  card_count:0
+WARNING: No hand_display found or no cards to position for player merkaat
+  hand_display:true
+  card_count:0
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+SERVER: ERROR - Bot player not found or no deployment signal
+WARNING: No hand_display found or no cards to position for player LocalPlayer
+  hand_display:true
+  card_count:0
+WARNING: No hand_display found or no cards to position for player merkaat
+  hand_display:true
+  card_count:0
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+SERVER: ERROR - Bot player not found or no deployment signal
+SERVER: ERROR - Bot player not found or no deployment signal
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+SERVER: ERROR - Bot player not found or no deployment signal
+WARNING: No hand_display found or no cards to position for player LocalPlayer
+  hand_display:true
+  card_count:0
+WARNING: No hand_display found or no cards to position for player merkaat
+  hand_display:true
+  card_count:0
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+SERVER: ERROR - Bot player not found or no deployment signal
+SERVER: ERROR - Bot player not found or no deployment signal
+SERVER: ERROR - Bot player not found or no deployment signal
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+SERVER: ERROR - Bot player not found or no deployment signal
+SERVER: ERROR - Bot player not found or no deployment signal
+WARNING: No hand_display found or no cards to position for player LocalPlayer
+  hand_display:true
+  card_count:0
+WARNING: No hand_display found or no cards to position for player merkaat
+  hand_display:true
+  card_count:0
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+Server: Unknown card type for card: @node2d@9593
+Server: Unknown card type for card: @node2d@9593
+Server: Unknown card type for card: @node2d@9593
+Server: Unknown card type for card: @node2d@9593
+SERVER: ERROR - Bot player not found or no deployment signal
+Server: Unknown card type for card: @node2d@9593
+Server: Unknown card type for card: @node2d@9593
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+WARNING: No hand_display found or no cards to position for player LocalPlayer
+  hand_display:true
+  card_count:0
+WARNING: No hand_display found or no cards to position for player merkaat
+  hand_display:true
+  card_count:0
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+MPScene: Paused server for victory/defeat
+Awarding conquest card to eliminator:1
+MPScene: Paused server for victory/defeat
+USER ERROR: Attempting to make child window exclusive, but the parent window already has another exclusive child. This window: /root/MultiplayerScene/@AcceptDialog@10558, parent window: /root, current exclusive child window: /root/MultiplayerScene/@AcceptDialog@10551
+   at: _set_transient_exclusive_child (scene/main/window.cpp:949)
+USER ERROR: The multiplayer instance is already active.
+   at: create_server (modules/enet/enet_multiplayer_peer.cpp:65)
+Server: Unknown card type for card: @node2d@10976
+Server: Unknown card type for card: @node2d@10976
+SERVER: ERROR - Bot player not found or no deployment signal
+Server: Unknown card type for card: @node2d@10976
+Server: Unknown card type for card: @node2d@10976
+SERVER: ERROR - Bot player not found or no deployment signal
+Server: Unknown card type for card: @node2d@10976
+USER ERROR: Attempt to call RPC with unknown peer ID: 1002.
+   at: _send_rpc (modules/multiplayer/scene_rpc_interface.cpp:307)
+Server: Unknown card type for card: @node2d@10976
+USER ERROR: Attempt to call RPC with unknown peer ID: 1002.
+   at: _send_rpc (modules/multiplayer/scene_rpc_interface.cpp:307)
+Server: Unknown card type for card: @node2d@10976
+Server: Unknown card type for card: @node2d@10976
+SERVER: ERROR - Bot player not found or no deployment signal
+SERVER: ERROR - Bot player not found or no deployment signal
+USER ERROR: Attempt to call RPC with unknown peer ID: 1002.
+   at: _send_rpc (modules/multiplayer/scene_rpc_interface.cpp:307)
+Server: Unknown card type for card: @node2d@10976
+Server: Unknown card type for card: @node2d@10976
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+SERVER: ERROR - Bot player not found or no deployment signal
+USER ERROR: Attempt to call RPC with unknown peer ID: 1002.
+   at: _send_rpc (modules/multiplayer/scene_rpc_interface.cpp:307)
+USER ERROR: Attempt to call RPC with unknown peer ID: 1002.
+   at: _send_rpc (modules/multiplayer/scene_rpc_interface.cpp:307)
+SERVER: ERROR - Bot player not found or no deployment signal
+USER ERROR: Attempt to call RPC with unknown peer ID: 1002.
+   at: _send_rpc (modules/multiplayer/scene_rpc_interface.cpp:307)
+USER ERROR: RPC 'sync_card_removal_to_client' on yourself is not allowed by selected mode.
+   at: rpcp (modules/multiplayer/scene_rpc_interface.cpp:478)
+USER ERROR: Attempt to call RPC with unknown peer ID: 1002.
+   at: _send_rpc (modules/multiplayer/scene_rpc_interface.cpp:307)
+MPScene: Paused server for victory/defeat
+Awarding conquest card to eliminator:1
+MPScene: Paused server for victory/defeat
+USER ERROR: Attempting to make child window exclusive, but the parent window already has another exclusive child. This window: /root/MultiplayerScene/@AcceptDialog@11512, parent window: /root, current exclusive child window: /root/MultiplayerScene/@AcceptDialog@11505
+   at: _set_transient_exclusive_child (scene/main/window.cpp:949)
+Opening Rules...
+Quitting game...
+USER WARNING: 659 RIDs of type "CanvasItem" were leaked.
+   at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2485)
+ERROR: 69 RID allocations of type 'N5GLES37TextureE' were leaked at exit.
+USER ERROR: Texture with GL ID of 103: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 108: leaked 2097152 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 109: leaked 2097152 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 110: leaked 524288 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 111: leaked 524288 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 112: leaked 524288 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 113: leaked 524288 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 114: leaked 524288 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 115: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 167: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 168: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 169: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 170: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 171: leaked 699050 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 172: leaked 524288 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 175: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 176: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 179: leaked 2097152 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 180: leaked 2097152 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 177: leaked 2097152 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 178: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 183: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 184: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 181: leaked 19324 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 182: leaked 120900 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 186: leaked 49348 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 188: leaked 191064 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 191: leaked 36488 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 189: leaked 59100 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 192: leaked 524288 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 193: leaked 524288 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 196: leaked 14628 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 197: leaked 100984 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 194: leaked 49576 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 199: leaked 524288 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 195: leaked 43108 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 200: leaked 64408 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 204: leaked 38752 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 202: leaked 10428 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 205: leaked 26548 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 208: leaked 174762 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 187: leaked 17856 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 190: leaked 39548 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 206: leaked 65324 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 203: leaked 82028 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 207: leaked 67392 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 198: leaked 23232 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 210: leaked 34440 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 174: leaked 48520 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 211: leaked 50884 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 209: leaked 27848 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 216: leaked 45568 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 213: leaked 32120 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 212: leaked 30088 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 217: leaked 13480 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 218: leaked 30408 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 219: leaked 28868 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 220: leaked 33960 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 215: leaked 55328 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 221: leaked 39580 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 214: leaked 33468 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 223: leaked 13664 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 224: leaked 42424 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 225: leaked 58840 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 222: leaked 25296 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 226: leaked 45668 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 228: leaked 34252 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 227: leaked 31520 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+USER ERROR: Texture with GL ID of 117: leaked 699050 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:79)
+ERROR: 391 RID allocations of type 'PN18TextServerAdvanced22ShapedTextDataAdvancedE' were leaked at exit.
+ERROR: 2 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.
+USER WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2284)
+USER ERROR: 116 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:604)

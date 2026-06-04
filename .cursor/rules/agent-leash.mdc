@@ -1,0 +1,16 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# AI-Assisted Coding Workflow Rules
+
+- Describe the single, next concrete, incremental change
+- Don't ask for code, ask for approaches
+    - Pick an approach, draft code
+    - Review / learn: pull up API docs, ask for explanations
+    - Wind back, try a different approach
+- Never Test, no Autoruns
+- Ask for suggestions on what could be implemented next
+- Repeat
+- When is ASK MODE: BE SUPER BRIEF!!!

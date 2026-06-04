@@ -1,0 +1,44 @@
+# Tech Context
+
+- Engine: Godot 4.3, GDScript.
+- **Optional Python** (dev / training only, not in build): `Python/mcts_train/` — import from `Python/` root. **`mcts_search.run_mcts_attack`**: ephemeral MCTS (defaults: 100 iterations, depth 5 rollout applies, breadth 5 children/node); truncated rollouts use **`_eval_truncated`** (0.25 terr ratio + 0.25 mission progress). **`MctslandBotPlayer`**: Rookie non-attack; ATTACK → MCTS or legacy bandit. **Training**: **`mcts_selfplay.py`** — ``--bots``, ``--matches``, ``--history``, ``--save-every``, ``--workers``, plus ``--mcts-iterations``, ``--mcts-depth``, ``--mcts-breadth``, ``--mcts-rollout`` (`uniform`|`rookie`), ``--mcts-no-history-prior``, ``--mcts-bandit-only``. **Eval**: **`mcts_calibrate.py`** (same flags + ``--workers``, ``--progress-every``). **Parallelism**: ``--workers W`` (0=all CPUs) uses ``multiprocessing.Pool`` + ``imap_unordered``; selfplay saves after each sub-chunk; calibrate prints streaming progress. **Inference**: ``--mcts-history PATH``, ``from_history_file``. ``data/`` and ``logs/`` gitignored.
+- Networking: Server/host authoritative; clients UI/presentation.
+- Globals: `MP_EXTRA_BOT_TYPE` (String) set from lobby Bot dropdown for 2-player MP start bot; reset in `reset_single_player_mode()`. **`CHEAT_ALWAYS_ELIMINATION_MISSION`** (bool): dev toggle so `_assign_missions_to_players` prefers elimination missions for humans; off for release.
+- Combat display: Root and all child Controls in `HUD/combat_display.tscn` use `mouse_filter = 2` for click-through.
+- Files of Interest:
+  - `main_menu.gd`: sets USE_STEAM_MULTIPLAYER, loads steam_lobby.tscn or simple_lobby.tscn (not multiplayer_scene)
+  - `Multiplayer/steam_lobby.gd`, `Multiplayer/simple_lobby.gd`: standalone lobby scenes (root = lobby UI); Start Game → multiplayer_scene; Back → reset MP state + main menu
+  - `Multiplayer/multiplayer_scene.tscn`, `multiplayer_scene.gd`: game-only (Map, HUD, popups); no Menu/lobby; auto-starts game when entered with peer and players from lobby
+  - `server.gd`: phases/turns/combat/auto-advance/guards + server-only phase timer (`phase_timer` under `Map/SeaDecoration/Compass/PhaseTimer`) and `_reset_phase_timer_for_new_phase()` helper used for both real phase changes and ATTACK OVERRUN “fresh move” resets
+  - `Players/mp_manager.gd`: ENet lobby/peer lifecycle, reset_lobby_state, fresh peer per host/join
+  - `Players/steam_mp_manager.gd`: Steam lobby/peer, reset_lobby_state, Steam callbacks (Option A), ensure_multiplayer_signals_connected
+  - `Players/bot_player.gd`: base bot
+  - `Players/Rookie/rookie_bot_player.gd`: looped attack, overrun
+  - `Players/Chaotic/chaotic_bot_player.gd`: simple behavior
+  - `HUD/combat_display.gd`: combat UI
+  - `HUD/phase_timer_label` + compass sprite live under `Map/SeaDecoration/Compass` and are driven purely from `multiplayer_scene.gd` via `rpc_sync_phase_timer()` and `_on_phase_changed()`
+  - `audio_manager.gd`: background music management
+  - `HUD/player_avatar.gd`: avatar system with dual modes
+  - `HUD/Popups/*.gd`: 7 popup types for game events
+  - `HUD/continent_info.gd`: continent bonus display
+  - `HUD/mission_display.gd` + `mission_display.tscn`: mission display; elimination uses **`MissionTooltipAnchor`** + instanced **`HUD/tooltip.tscn`**, meta **`tooltip_bbcode`**, word-wrapped remainder text; **`HUD/tooltip.gd`** handles **`MissionTooltipAnchor`** in `_update_content`
+  - `HUD/event_log.gd` + `HUD/event_log.tscn`: RichTextLabel BBCode log; **`Multiplayer/multiplayer_scene.gd`**: `@onready var event_log`, `rpc_push_game_event_segments` / `rpc_push_game_event_line`, positioning + width in **`_update_avatar_scale()`** (log under mission, width **`mission_width * 0.8`**), **`clear_log`** at game start
+  - `HUD/turn_controls.gd`: phase buttons; **DEPLOY** shows **UNDO** when server-synced deploy undo depth > 0 and local pending > 0
+  - `server.gd`: **`human_deploy_undo_stack`**, **`request_undo_last_deploy`**, **`_deploy_army_to_territory_direct(..., record_for_undo_stack)`** for manual vs auto deploy; **event log**: **`_evt_seg`**, **`_push_game_event_segments`**, **`_push_secondary_or_immediate_segments`**, buffer vars during combat resolve; flush **combat row first**, then buffered rows so **majors are newer-at-top** than combat (`push_front` in `event_log.gd`)
+  - `HUD/ingame_menu.gd`: pause menu with state management
+  - `rules_scene.gd`: context-aware rules display
+  - `docs/steam_mp/post_mortem.md`: Steam multiplayer implementation post-mortem (addon choice, API semantics, peer identity, post-conquest host fix)
+- Concurrency:
+  - Await-based async; `call_deferred` used to avoid deep recursion.
+- Logging:
+  - Debug prints heavily reduced; mission assignment logs kept.
+- Audio Assets:
+  - Background Music: `Assets/BG_music/menu_intermezzo.ogg`, `ingame_relax.ogg`
+  - Sound Effects: `Assets/SoundEffects/popup_open.ogg`, `popup_close.ogg`, `ui_select.ogg`, `attack_punch_dice.wav`, `continent_rocks.wav`, `card_goldsteps.wav`, victory/defeat sounds
+- Font Assets:
+  - `Assets/Font_Pirata_One/PirataOne-Regular.ttf`: Titles, headers, points
+  - `Assets/Fonts/Estonia-Regular.ttf`: Body text, labels, descriptions
+- UI Component Structure:
+  - `HUD/Popups/`: 7 popup scenes (victory, elimination, attack confirm, conquest movement, army award, attack of despair, host elimination)
+  - `HUD/Avatars/`: Avatar images (avatar_beaver.png, avatar_koala.png, etc.) and attack sounds
+  - `HUD/Assets/`: Dice textures (dice_1.png through dice_6.png), fight_cloud.png, arrow_attack.png 

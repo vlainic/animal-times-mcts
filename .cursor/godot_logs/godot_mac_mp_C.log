@@ -1,0 +1,39 @@
+Godot Engine v4.3.stable.official.77dcf97d8 - https://godotengine.org
+OpenGL API 4.1 ATI-7.1.6 - Compatibility - Using Device: ATI Technologies Inc. - AMD Radeon Pro 5300M OpenGL Engine
+
+=== INITIALIZING STEAM ===
+App ID (env/file/fallback): 4407810
+Steam initialized successfully!
+Steam App ID (from Steam): 4407810
+Steam ID: 76561198375544020
+Username: ljubomir85
+=== STEAM LOBBY: Signal connections established ===
+=== STEAM LOBBY: HOST button pressed ===
+=== CREATING STEAM LOBBY ===
+  Current lobby_id: 0
+  Calling Steam.createLobby with LOBBY_TYPE_PUBLIC, MAX_CLIENTS = 6
+  Steam.createLobby() called successfully, waiting for callback...
+=== STEAM LOBBY: create_server() called, waiting for callback ===
+=== LOBBY CREATED CALLBACK ===
+  Result: 16 (1 = success, other = error)
+  Lobby ID: 0
+USER ERROR: Failed to create lobby with result code: 16
+   at: push_error (core/variant/variant_utility.cpp:1092)
+  ERROR: Lobby creation failed, emitting connection_failed signal
+=== STEAM LOBBY: HOST button pressed ===
+=== CREATING STEAM LOBBY ===
+  Current lobby_id: 0
+  Calling Steam.createLobby with LOBBY_TYPE_PUBLIC, MAX_CLIENTS = 6
+  Steam.createLobby() called successfully, waiting for callback...
+=== STEAM LOBBY: create_server() called, waiting for callback ===
+=== LOBBY CREATED CALLBACK ===
+  Result: 16 (1 = success, other = error)
+  Lobby ID: 0
+USER ERROR: Failed to create lobby with result code: 16
+   at: push_error (core/variant/variant_utility.cpp:1092)
+  ERROR: Lobby creation failed, emitting connection_failed signal
+=== REQUESTING LOBBY LIST ===
+Returning to main menu from Steam lobby...
+=== LOBBY LIST RECEIVED ===
+Found 0 lobbies
+Quitting game...

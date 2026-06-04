@@ -1,0 +1,62 @@
+Godot Engine v4.3.stable.official.77dcf97d8 - https://godotengine.org
+OpenGL API 4.1 ATI-7.1.6 - Compatibility - Using Device: ATI Technologies Inc. - AMD Radeon Pro 5300M OpenGL Engine
+
+=== INITIALIZING STEAM ===
+App ID (env/file/fallback): 4407810
+Steam initialized successfully!
+Steam App ID (from Steam): 4407810
+Steam ID: 76561198375544020
+Username: ljubomir85
+=== STEAM LOBBY: Signal connections established ===
+=== STEAM LOBBY: HOST button pressed ===
+=== CREATING STEAM LOBBY ===
+  Current lobby_id: 0
+  Calling Steam.createLobby with LOBBY_TYPE_PUBLIC, MAX_CLIENTS = 6
+  Steam.createLobby() called successfully, waiting for callback...
+=== STEAM LOBBY: create_server() called, waiting for callback ===
+=== LOBBY CREATED CALLBACK ===
+  Result: 1 (1 = success, other = error)
+  Lobby ID: 109775242935705100
+  Lobby created successfully!
+  Setting lobby data...
+  Lobby data set successfully
+  Creating SteamMultiplayerPeer as host...
+  create_host() returned: 2 (0 = OK)
+USER ERROR: Failed to create Steam host with error code: 2
+   at: push_error (core/variant/variant_utility.cpp:1092)
+  ERROR: create_host failed, emitting connection_failed signal
+=== LOBBY JOINED CALLBACK ===
+Lobby ID: 109775242935705100
+Response: 1 (1 = success)
+We are the lobby owner (host)
+=== REQUESTING LOBBY LIST ===
+=== LOBBY LIST RECEIVED ===
+Found 0 lobbies
+=== STEAM LOBBY: LOBBIES UPDATED ===
+=== STEAM LOBBY: HOST button pressed ===
+=== CREATING STEAM LOBBY ===
+  Current lobby_id: 0
+  Calling Steam.createLobby with LOBBY_TYPE_PUBLIC, MAX_CLIENTS = 6
+  Steam.createLobby() called successfully, waiting for callback...
+=== STEAM LOBBY: create_server() called, waiting for callback ===
+=== LOBBY CREATED CALLBACK ===
+  Result: 1 (1 = success, other = error)
+  Lobby ID: 109775242935705301
+  Lobby created successfully!
+  Setting lobby data...
+  Lobby data set successfully
+  Creating SteamMultiplayerPeer as host...
+  create_host() returned: 2 (0 = OK)
+USER ERROR: Failed to create Steam host with error code: 2
+   at: push_error (core/variant/variant_utility.cpp:1092)
+  ERROR: create_host failed, emitting connection_failed signal
+=== LOBBY JOINED CALLBACK ===
+Lobby ID: 109775242935705301
+Response: 1 (1 = success)
+We are the lobby owner (host)
+=== REQUESTING LOBBY LIST ===
+=== LOBBY LIST RECEIVED ===
+Found 0 lobbies
+=== STEAM LOBBY: LOBBIES UPDATED ===
+Returning to main menu from Steam lobby...
+Quitting game...
