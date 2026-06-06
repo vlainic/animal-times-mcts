@@ -176,6 +176,39 @@ def _count_player_territories(owners: np.ndarray, player: int) -> int:
     return int(np.sum(owners == player))
 
 
+def player_land_rank_bucket(owners: np.ndarray, eliminated: np.ndarray, seat: int) -> int:
+    """
+    Competition rank of ``seat`` by territory count among non-eliminated players.
+
+    Ties share the same rank (e.g. two second-place players → ranks ``1,2,2,4``). Returns
+    bucket ``1``..``4`` where ``4`` means rank 4 or worse.
+    """
+    n = len(eliminated)
+    if seat < 0 or seat >= n or bool(eliminated[seat]):
+        return 4
+
+    counts: List[Tuple[int, int]] = []
+    for s in range(n):
+        if bool(eliminated[s]):
+            continue
+        counts.append((_count_player_territories(owners, s), s))
+    counts.sort(key=lambda x: (-x[0], x[1]))
+
+    rank_by_seat: Dict[int, int] = {}
+    rank = 1
+    i = 0
+    while i < len(counts):
+        j = i + 1
+        while j < len(counts) and counts[j][0] == counts[i][0]:
+            j += 1
+        for k in range(i, j):
+            rank_by_seat[counts[k][1]] = rank
+        rank += j - i
+        i = j
+
+    return min(int(rank_by_seat.get(seat, 4)), 4)
+
+
 def _find_elimination_target_seat(
     animal: str, player_names: Tuple[str, ...], eliminated: np.ndarray
 ) -> int:

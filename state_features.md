@@ -82,9 +82,16 @@ Two new fields appended to the Mctsland attack state key (now a 6-tuple):
 - ``def_cont_bucket``: same from the **defender's** perspective (how many tiles of that continent
   the current owner still does not own).
 
+**Attack state key — defender land rank (added)**
+
+- ``def_rank_bucket``: competition rank of the **defender** by owned territory count among living
+  players — ``1`` = most lands, ``2`` / ``3`` = next tiers, ``4`` = rank 4+ (ties share a rank,
+  e.g. ``1,2,2,4``). From ``player_land_rank_bucket`` in ``missions.py``.
+
 Computed from the board *before* combat using ``continent_missing_for_territory`` in
 ``missions.py``, which delegates to the existing ``_continent_missing`` helper.
 
-Old 4-field JSON history keys are back-compat padded with ``(1, 1)`` on load.
+Old 4-field JSON history keys are back-compat padded with ``(1, 1, 4)`` on load; 6-field keys
+with ``(4,)`` for missing defender rank.
 Existing ``data/mctsland_history*.json`` files need a fresh self-play run to align with the
-new 6-field keys.
+new 7-field keys.

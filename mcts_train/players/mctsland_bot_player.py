@@ -29,7 +29,8 @@ After each game, :meth:`notify_game_over` updates ``history`` for logged attack 
 
 **State key** (per ``(src, dst)`` candidate)
 
-``(att_units, def_units, mission_bucket, coin_kind, att_cont_bucket, def_cont_bucket)`` where
+``(att_units, def_units, mission_bucket, coin_kind, att_cont_bucket, def_cont_bucket,
+def_rank_bucket)`` where
 ``att_units`` is ``min(units[src] + sum(units[t]-1 for connected own t != src), 5)`` — armies on
 the attacking tile **plus** spare from the connected own cluster (not “movable pool only”, which
 was 0 for a lone 1-unit attacker).
@@ -42,7 +43,11 @@ If several tokens match ``dst``, the maximum ``coin_kind`` among them is used.
 ``att_cont_bucket`` / ``def_cont_bucket``: how many tiles the **attacker** / **defender** still
 need to fully own the continent of ``dst`` — bucketed as ``1`` (need ≤1), ``2`` (need 2), ``3``
 (need 3+). Uses :func:`mcts_train.missions.continent_missing_for_territory` on the current board
-(before combat). Old 4-field history keys are back-compat padded with ``(1, 1)``.
+(before combat).
+``def_rank_bucket``: competition rank of the **defender** by owned territory count among living
+players — ``1`` = most lands, ``2`` = next tier, ``3`` = third tier, ``4`` = rank 4+ (ties share
+a rank, e.g. ``1,2,2,4``). From :func:`mcts_train.missions.player_land_rank_bucket`.
+Old history keys are back-compat padded on load (4-field → ``(1,1,4)``; 6-field → ``(4,)``).
 
 **Training vs inference**
 
@@ -79,6 +84,7 @@ from ..missions import (
     bucket_lands_to_conquer,
     continent_missing_for_territory,
     mission_territory_values,
+    player_land_rank_bucket,
 )
 from ..paths import data_dir, repo_root
 from ..simulator import (
@@ -198,21 +204,23 @@ def _mission_bucket_for_tile(
 
 
 def attack_key_to_str(key: Tuple[int, ...]) -> str:
-    """Canonical JSON/history key for a 6-tuple state (back-compat: also accepts 4-tuple)."""
+    """Canonical JSON/history key for a 7-tuple state (back-compat: also accepts 4- or 6-tuple)."""
     return "(" + ",".join(str(k) for k in key) + ")"
 
 
 def str_to_attack_key(s: str) -> Tuple[int, ...]:
-    """Parse ``attack_key_to_str`` output; pads old 4-field keys with ``(1, 1)``."""
+    """Parse ``attack_key_to_str`` output; pads old 4- and 6-field keys to 7 fields."""
     inner = s.strip()
     if inner.startswith("(") and inner.endswith(")"):
         inner = inner[1:-1]
     parts = [p.strip() for p in inner.split(",")]
-    if len(parts) not in (4, 6):
+    if len(parts) not in (4, 6, 7):
         raise ValueError(f"invalid attack key: {s!r}")
     t = tuple(int(p) for p in parts)
     if len(t) == 4:
-        t = t + (1, 1)
+        t = t + (1, 1, 4)
+    elif len(t) == 6:
+        t = t + (4,)
     return t
 
 
@@ -417,7 +425,7 @@ class MctslandBotPlayer:
 
     def _build_attack_key(
         self, state: GameState, m: MapData, src: int, dst: int
-    ) -> Tuple[int, int, int, int, int, int]:
+    ) -> Tuple[int, int, int, int, int, int, int]:
         att_units = self._att_units_for_key(state, m, src)
         def_units = min(int(state.units[dst]), DEF_UNITS_CAP)
         mission_bucket = _mission_bucket_for_tile(m, state, self.seat, dst)
@@ -429,7 +437,16 @@ class MctslandBotPlayer:
         def_cont_bucket = bucket_lands_to_conquer(
             continent_missing_for_territory(m, state.owners, def_seat, dst)
         )
-        return (att_units, def_units, mission_bucket, coin_kind, att_cont_bucket, def_cont_bucket)
+        def_rank_bucket = player_land_rank_bucket(state.owners, state.eliminated, def_seat)
+        return (
+            att_units,
+            def_units,
+            mission_bucket,
+            coin_kind,
+            att_cont_bucket,
+            def_cont_bucket,
+            def_rank_bucket,
+        )
 
     def _lookup_stats(self, key_str: str) -> Tuple[int, int]:
         row = self.history.get(key_str)
