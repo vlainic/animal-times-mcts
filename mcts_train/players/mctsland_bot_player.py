@@ -27,16 +27,20 @@ After each game, :meth:`notify_game_over` updates ``history`` for logged attack 
 
 **State key** (per ``(src, dst)`` candidate)
 
-``(att_units, def_units, mission_bucket, coin_kind)`` where ``att_units`` is
-``min(units[src] + sum(units[t]-1 for connected own t != src), 5)`` — armies on the attacking
-tile **plus** spare from the connected own cluster (not “movable pool only”, which was 0 for a
-lone 1-unit attacker).
+``(att_units, def_units, mission_bucket, coin_kind, att_cont_bucket, def_cont_bucket)`` where
+``att_units`` is ``min(units[src] + sum(units[t]-1 for connected own t != src), 5)`` — armies on
+the attacking tile **plus** spare from the connected own cluster (not “movable pool only”, which
+was 0 for a lone 1-unit attacker).
 ``mission_bucket`` is from :func:`mcts_train.missions.mission_territory_values` on the defender
 tile: ``0`` = not mission-focused, ``1`` = flexible (~0.5 tensor), ``2`` = priority (~1.0),
 matching elimination / conquest ``any_third`` / ``sLands`` / ``sTriple`` semantics.
 ``coin_kind`` is from cards in this seat's hand for defender territory ``dst``:
 ``0`` = none; ``1`` = saber (``CoinToken.coin_kind``); ``2`` = gun; ``3`` = cannon.
 If several tokens match ``dst``, the maximum ``coin_kind`` among them is used.
+``att_cont_bucket`` / ``def_cont_bucket``: how many tiles the **attacker** / **defender** still
+need to fully own the continent of ``dst`` — bucketed as ``1`` (need ≤1), ``2`` (need 2), ``3``
+(need 3+). Uses :func:`mcts_train.missions.continent_missing_for_territory` on the current board
+(before combat). Old 4-field history keys are back-compat padded with ``(1, 1)``.
 
 **Training vs inference**
 
@@ -69,7 +73,12 @@ from ..mcts_search import (
     RolloutKind,
     run_mcts_attack,
 )
-from ..missions import mission_territory_values
+from ..missions import (
+    bucket_lands_to_conquer,
+    continent_missing_for_territory,
+    mission_territory_values,
+)
+from ..paths import data_dir, repo_root
 from ..simulator import (
     Action,
     Combat,
@@ -84,22 +93,21 @@ DEF_UNITS_CAP = 5
 DEFAULT_WIN_RATE = 0.5
 UCB_C = math.sqrt(2.0)
 
-# Package dir ``.../Python/mcts_train`` (self-play writes under ``data/`` here).
 _MCTS_TRAIN_ROOT = Path(__file__).resolve().parents[1]
-_MCTS_DATA_DIR = _MCTS_TRAIN_ROOT / "data"
-_PY_ROOT = _MCTS_TRAIN_ROOT.parent
+_PY_ROOT = repo_root()
+_MCTS_DATA_DIR = data_dir()
 
 
 def resolve_history_json_path(path: Path | str) -> Path:
     """
-    Resolve a history JSON path for training output in ``mcts_train/data/``.
+    Resolve a history JSON path for training output in repo ``data/``.
 
     Search order for relative paths:
 
-    1. ``Path.cwd() / path`` (e.g. run from ``Python/mcts_train`` with ``data/foo.json``)
+    1. ``Path.cwd() / path`` (e.g. ``data/foo.json`` from repo root)
     2. ``mcts_train / path``
-    3. ``Python / path``
-    4. ``mcts_train/data / <filename>`` when ``path`` is a bare filename
+    3. repo root / path
+    4. ``data / <filename>`` when ``path`` is a bare filename
     """
     hist_path = Path(path).expanduser()
     if hist_path.is_absolute():
@@ -136,7 +144,7 @@ def load_history_from_json(path: Path | str, *, warn: bool = True) -> Dict[str, 
             print(
                 "warning: mcts history file not found — loaded 0 keys:",
                 p,
-                f"(cwd={Path.cwd()!s}; try data/... under mcts_train or mcts_train/data/...)",
+                f"(cwd={Path.cwd()!s}; try data/... at repo root)",
             )
         return {}
     text = p.read_text(encoding="utf-8").strip()
@@ -185,20 +193,23 @@ def _mission_bucket_for_tile(
     return 2
 
 
-def attack_key_to_str(key: Tuple[int, int, int, int]) -> str:
-    """Canonical JSON/history key for a 4-tuple state."""
-    return f"({key[0]},{key[1]},{key[2]},{key[3]})"
+def attack_key_to_str(key: Tuple[int, ...]) -> str:
+    """Canonical JSON/history key for a 6-tuple state (back-compat: also accepts 4-tuple)."""
+    return "(" + ",".join(str(k) for k in key) + ")"
 
 
-def str_to_attack_key(s: str) -> Tuple[int, int, int, int]:
-    """Parse ``attack_key_to_str`` output."""
+def str_to_attack_key(s: str) -> Tuple[int, ...]:
+    """Parse ``attack_key_to_str`` output; pads old 4-field keys with ``(1, 1)``."""
     inner = s.strip()
     if inner.startswith("(") and inner.endswith(")"):
         inner = inner[1:-1]
     parts = [p.strip() for p in inner.split(",")]
-    if len(parts) != 4:
+    if len(parts) not in (4, 6):
         raise ValueError(f"invalid attack key: {s!r}")
-    return tuple(int(p) for p in parts)
+    t = tuple(int(p) for p in parts)
+    if len(t) == 4:
+        t = t + (1, 1)
+    return t
 
 
 @dataclass
@@ -362,12 +373,19 @@ class MctslandBotPlayer:
 
     def _build_attack_key(
         self, state: GameState, m: MapData, src: int, dst: int
-    ) -> Tuple[int, int, int, int]:
+    ) -> Tuple[int, int, int, int, int, int]:
         att_units = self._att_units_for_key(state, m, src)
         def_units = min(int(state.units[dst]), DEF_UNITS_CAP)
         mission_bucket = _mission_bucket_for_tile(m, state, self.seat, dst)
         coin_kind = self._hand_coin_kind_for_defender(state, dst)
-        return (att_units, def_units, mission_bucket, coin_kind)
+        def_seat = int(state.owners[dst])
+        att_cont_bucket = bucket_lands_to_conquer(
+            continent_missing_for_territory(m, state.owners, self.seat, dst)
+        )
+        def_cont_bucket = bucket_lands_to_conquer(
+            continent_missing_for_territory(m, state.owners, def_seat, dst)
+        )
+        return (att_units, def_units, mission_bucket, coin_kind, att_cont_bucket, def_cont_bucket)
 
     def _lookup_stats(self, key_str: str) -> Tuple[int, int]:
         row = self.history.get(key_str)

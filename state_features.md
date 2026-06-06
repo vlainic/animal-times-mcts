@@ -70,3 +70,21 @@ Your list is complete for the board game state. Simulator handles legality, MCTS
 Extra state info:
 - how many lands for continent to capture left after target
 - how many lands for defender elimination
+
+=============================================================================
+
+**Attack state key — continent distance buckets (added)**
+
+Two new fields appended to the Mctsland attack state key (now a 6-tuple):
+
+- ``att_cont_bucket``: tiles the **attacker** still needs to fully own the continent of the target
+  territory — bucketed 1 (≤1 needed), 2 (exactly 2), 3 (3 or more).
+- ``def_cont_bucket``: same from the **defender's** perspective (how many tiles of that continent
+  the current owner still does not own).
+
+Computed from the board *before* combat using ``continent_missing_for_territory`` in
+``missions.py``, which delegates to the existing ``_continent_missing`` helper.
+
+Old 4-field JSON history keys are back-compat padded with ``(1, 1)`` on load.
+Existing ``data/mctsland_history*.json`` files need a fresh self-play run to align with the
+new 6-field keys.

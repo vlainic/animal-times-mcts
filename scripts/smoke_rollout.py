@@ -18,14 +18,14 @@ Smoke test: ``N`` bot seats (default ``N=3``) play in-process.
 
 **How to run**
 
-From the ``Python/`` directory (so ``mcts_train`` is importable)::
+From repo root::
 
-    python3 mcts_train/scripts/smoke_rollout.py
-    python3 mcts_train/scripts/smoke_rollout.py --bots 4
-    python3 mcts_train/scripts/smoke_rollout.py --bots 1222
-    python3 mcts_train/scripts/smoke_rollout.py --log
-    python3 mcts_train/scripts/smoke_rollout.py --log-file mcts_train/logs/smoke.txt
-    python3 mcts_train/scripts/smoke_rollout.py --bots 1222 --mcts-depth 5 --mcts-breadth 5
+    python3 scripts/smoke_rollout.py
+    python3 scripts/smoke_rollout.py --bots 4
+    python3 scripts/smoke_rollout.py --bots 1222
+    python3 scripts/smoke_rollout.py --log
+    python3 scripts/smoke_rollout.py --log-file logs/smoke.txt
+    python3 scripts/smoke_rollout.py --bots 1222 --mcts-depth 5 --mcts-breadth 5
 
 ``Simulator.new_game`` draws fresh entropy (board, missions, cards, dice, policy); no seed
 flags. Stochastic policies use ``state.rng_policy``.
@@ -35,8 +35,8 @@ on exit (including when ``max_steps`` is hit). ``--log-file PATH`` writes the **
 (UTF-8 text); implies event logging even if ``--log`` is omitted. Parent directories are created as
 needed. If there are no log lines, no file is written.
 
-The script prepends ``Python/`` to ``sys.path`` based on this file’s location, so running
-with ``python3`` from ``Python/`` is the intended workflow.
+``_bootstrap.setup()`` prepends the repo root to ``sys.path`` so ``import mcts_train`` works
+when you run ``python3 scripts/smoke_rollout.py`` from the repo root.
 
 **Turn / bot lifecycle**
 
@@ -59,10 +59,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-# --- Ensure ``import mcts_train`` resolves: this file is .../Python/mcts_train/scripts/... ---
-_PY_ROOT = Path(__file__).resolve().parents[2]
-if str(_PY_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PY_ROOT))
+from _bootstrap import setup
+
+setup()
 
 from mcts_train.mcts_search import (
     DEFAULT_MCTS_BREADTH,

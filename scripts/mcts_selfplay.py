@@ -2,19 +2,19 @@
 """
 Self-play training for Mctsland bots — accumulates visit/win stats in JSON.
 
-**Usage** (from ``Python/``)::
+**Usage** (from repo root)::
 
-    python3 mcts_train/scripts/mcts_selfplay.py --bots 4 --matches 100
-    python3 mcts_train/scripts/mcts_selfplay.py --bots 6 --matches 50 --save-every 5
-    python3 mcts_train/scripts/mcts_selfplay.py --bots 4 --matches 200 --workers 8
-    python3 mcts_train/scripts/mcts_selfplay.py --bots 4 --matches 10 \\
+    python3 scripts/mcts_selfplay.py --bots 4 --matches 100
+    python3 scripts/mcts_selfplay.py --bots 6 --matches 50 --save-every 5
+    python3 scripts/mcts_selfplay.py --bots 4 --matches 200 --workers 8
+    python3 scripts/mcts_selfplay.py --bots 4 --matches 10 \\
         --mcts-depth 5 --mcts-breadth 5
 
 Each match draws missions from **all** pools (``mission_pool=\"all\"`` in ``Simulator.new_game``):
 conquest + elimination + special, shuffled together.
 
 If ``--history`` is omitted, the file name includes the **run start** stamp ``YYMMddhhmmss``:
-``mcts_train/data/mctsland_history_<stamp>.json``.
+``data/mctsland_history_<stamp>.json`` (repo root).
 
 ``--workers`` runs independent match chunks in parallel (``0`` = all CPUs); histories are
 merged by summing ``visits``/``wins`` per key at the end (``--save-every`` applies only with
@@ -32,9 +32,9 @@ from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-_PY_ROOT = Path(__file__).resolve().parents[2]
-if str(_PY_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PY_ROOT))
+from _bootstrap import setup
+
+setup()
 
 from mcts_train.mcts_search import (
     DEFAULT_MCTS_BREADTH,
@@ -47,10 +47,11 @@ from mcts_train.players.mctsland_bot_player import (
     resolve_history_json_path,
 )
 from mcts_train.simulator import Simulator
+from mcts_train.paths import data_dir
 from mcts_train.state import GamePhase
 
 _SMOKE_PLAYER_NAMES = ("beaver", "koala", "llama", "meerkat", "panda", "pig")
-_HISTORY_DATA_DIR = _PY_ROOT / "mcts_train" / "data"
+_HISTORY_DATA_DIR = data_dir()
 
 
 class MatchStuck(RuntimeError):
@@ -262,7 +263,7 @@ def main() -> None:
         default=None,
         metavar="PATH",
         help=(
-            "Output JSON path. Default: mcts_train/data/mctsland_history_<YYMMddhhmmss>.json "
+            "Output JSON path. Default: data/mctsland_history_<YYMMddhhmmss>.json "
             "(run-local timestamp)."
         ),
     )

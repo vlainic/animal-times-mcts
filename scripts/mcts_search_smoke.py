@@ -2,9 +2,9 @@
 """
 Minimal smoke test for :func:`mcts_train.mcts_search.run_mcts_attack`.
 
-From ``Python/``::
+From repo root::
 
-    python3 mcts_train/scripts/mcts_search_smoke.py
+    python3 scripts/mcts_search_smoke.py
 
 Advances a 3-player game with :class:`RookieBotPlayer` until ATTACK has at least one legal
 combat, then runs MCTS with low iterations and asserts the chosen combat is legal.
@@ -16,14 +16,11 @@ compare ``--mcts-iterations`` / ``--mcts-depth`` / ``--mcts-breadth`` / ``--mcts
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-_PY_ROOT = Path(__file__).resolve().parents[2]
-if str(_PY_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PY_ROOT))
-
 import numpy as np
+
+from _bootstrap import setup
+
+setup()
 
 from mcts_train.mcts_search import legal_root_combats, run_mcts_attack
 from mcts_train.players.rookie_bot_player import RookieBotPlayer

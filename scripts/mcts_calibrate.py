@@ -5,14 +5,14 @@ Batch evaluation: play ``N`` games (Rookie vs Mctsland mix) and aggregate win st
 Uses the same game loop as ``smoke_rollout.py`` via ``run_one_rollout``. Mctsland inference
 history is read-only (no training writes).
 
-**How to run** (from ``Python/``)::
+**How to run** (from repo root)::
 
-    python3 mcts_train/scripts/mcts_calibrate.py --bots 1222 --matches 100
-    python3 mcts_train/scripts/mcts_calibrate.py --bots 1222 --matches 400 --rotate-seats
-    python3 mcts_train/scripts/mcts_calibrate.py --bots 1222 --matches 400 --workers 8
-    python3 mcts_train/scripts/mcts_calibrate.py --bots 1222 --matches 100 \\
-        --mcts-history mcts_train/data/mctsland_history_100a.json
-    python3 mcts_train/scripts/mcts_calibrate.py --bots 4 --matches 50
+    python3 scripts/mcts_calibrate.py --bots 1222 --matches 100
+    python3 scripts/mcts_calibrate.py --bots 1222 --matches 400 --rotate-seats
+    python3 scripts/mcts_calibrate.py --bots 1222 --matches 400 --workers 8
+    python3 scripts/mcts_calibrate.py --bots 1222 --matches 100 \\
+        --mcts-history data/mctsland_history_100a.json
+    python3 scripts/mcts_calibrate.py --bots 4 --matches 50
 
 **Calibration protocol:** compare ``type wins`` at fixed ``--matches`` when toggling ``--mcts-iterations``,
 ``--mcts-depth``, ``--mcts-breadth``, or ``--mcts-rollout`` (``uniform`` vs ``rookie``).
@@ -40,9 +40,9 @@ from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-_PY_ROOT = Path(__file__).resolve().parents[2]
-if str(_PY_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PY_ROOT))
+from _bootstrap import setup
+
+setup()
 
 from mcts_train.mcts_search import (
     DEFAULT_MCTS_BREADTH,
@@ -50,7 +50,7 @@ from mcts_train.mcts_search import (
     DEFAULT_MCTS_ITERATIONS,
     RolloutKind,
 )
-from mcts_train.scripts.smoke_rollout import (
+from smoke_rollout import (
     MaxStepsTimeout,
     RolloutResult,
     default_max_steps,
@@ -423,7 +423,7 @@ def main() -> None:
         if len(mcts_history) == 0:
             print(
                 "warning: history has 0 keys — Mctsland runs without JSON priors "
-                "(check path; from mcts_train use data/NAME.json)"
+                "(check path; use data/NAME.json from repo root)"
             )
 
     if args.rotate_seats:

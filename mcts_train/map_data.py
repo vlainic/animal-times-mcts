@@ -8,11 +8,11 @@ should go through :class:`MapData` from :func:`load_map_data` or the cached
 :func:`get_map_data`. The simulator and rookie bot both use this; MCTS should **not**
 duplicate adjacency logic.
 
-**Data sources** (under the game repo root, see :func:`repo_root`)
+**Data sources** (under the project repo root, see :func:`repo_root`)
 
-- ``Map/Territories/territory_indexing.json`` — canonical territory name → integer index ``0..36``.
-- ``Map/Territories/territory_connections.json`` — undirected adjacency (display names with spaces).
-- ``Map/Territories/territory_names.json`` — continent → list of territory names.
+- ``gamedata/Territories/territory_indexing.json`` — canonical territory name → integer index ``0..36``.
+- ``gamedata/Territories/territory_connections.json`` — undirected adjacency (display names with spaces).
+- ``gamedata/Territories/territory_names.json`` — continent → list of territory names.
 
 **Conventions**
 
@@ -38,15 +38,14 @@ from typing import Dict, List, Optional, Tuple
 
 def repo_root() -> Path:
     """
-    Absolute path to the **game repository root** (the ``animal-times-demo`` folder).
-
-    ``map_data.py`` lives at ``Python/mcts_train/map_data.py``, so we walk three parents:
-    ``mcts_train`` → ``Python`` → repo root.
+    Absolute path to the **project repository root** (``animal-times-mcts/``).
 
     Returns:
-        Path usable to open ``Map/...`` and ``Missions/...`` JSON next to the Godot project.
+        Path usable to open ``gamedata/...`` JSON bundled with this project.
     """
-    return Path(__file__).resolve().parent.parent.parent
+    from .paths import repo_root as _root
+
+    return _root()
 
 
 @dataclass(frozen=True)
@@ -103,9 +102,10 @@ def load_map_data() -> MapData:
     import numpy as np
 
     root = repo_root()
-    idx_path = root / "Map" / "Territories" / "territory_indexing.json"
-    conn_path = root / "Map" / "Territories" / "territory_connections.json"
-    names_path = root / "Map" / "Territories" / "territory_names.json"
+    terr_dir = root / "gamedata" / "Territories"
+    idx_path = terr_dir / "territory_indexing.json"
+    conn_path = terr_dir / "territory_connections.json"
+    names_path = terr_dir / "territory_names.json"
 
     with open(idx_path, encoding="utf-8") as f:
         name_to_idx: Dict[str, int] = json.load(f)

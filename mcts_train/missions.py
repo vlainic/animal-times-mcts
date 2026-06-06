@@ -37,13 +37,13 @@ from .map_data import MapData, repo_root
 
 def load_mission_pool() -> Dict[str, List[Dict[str, Any]]]:
     """
-    Load ``Missions/missions.json`` (conquest / elimination / special arrays).
+    Load ``gamedata/missions.json`` (conquest / elimination / special arrays).
 
     Returns:
         Dict with keys ``"conquest"``, ``"elimination"``, ``"special"`` mapping to lists of
         mission dicts as authored for the Godot game.
     """
-    path = repo_root() / "Missions" / "missions.json"
+    path = repo_root() / "gamedata" / "missions.json"
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
@@ -196,6 +196,23 @@ def _continent_missing(m: MapData, owners: np.ndarray, player: int, cname: str) 
         return 999
     owned = sum(1 for i in idxs if owners[i] == player)
     return len(idxs) - owned
+
+
+def continent_missing_for_territory(
+    m: MapData, owners: np.ndarray, player: int, territory_idx: int
+) -> int:
+    """Tiles ``player`` still needs to fully control the continent of ``territory_idx``."""
+    cname = m.territory_continent[territory_idx]
+    return _continent_missing(m, owners, player, cname)
+
+
+def bucket_lands_to_conquer(n: int) -> int:
+    """Discretize a missing-tile count into bucket 1 / 2 / 3 (3 means 3+)."""
+    if n <= 1:
+        return 1
+    if n == 2:
+        return 2
+    return 3
 
 
 def mission_territory_values(
