@@ -3,9 +3,11 @@ Mctsland bot — attack decisions from historical visit/win stats; other phases 
 
 **Non-attack phases**
 
-REINFORCE, DEPLOY, and FORTIFY use the **same** implementations as :class:`RookieBotPlayer`:
-they are routed explicitly to ``_rookie._reinforce`` / ``_deploy`` / ``_fortify`` (identical
-logic to :meth:`RookieBotPlayer.choose_action`). Only ATTACK combat selection differs.
+DEPLOY and FORTIFY use the **same** implementations as :class:`RookieBotPlayer` (via
+``_rookie._deploy`` / ``_fortify``). **REINFORCE** follows the same attack-planning flow as
+Rookie but consolidates onto the planned attacker until ``ATT_UNITS_CAP`` (**5**) units — aligned
+with the attack-state key — instead of Rookie's GDScript **4**-unit stop. Only ATTACK combat
+selection differs.
 
 **Attack and chain attacks**
 
@@ -83,6 +85,8 @@ from ..simulator import (
     Action,
     Combat,
     EndAttack,
+    EndReinforce,
+    MoveUnits,
     Simulator,
 )
 from ..state import GamePhase, GameState
@@ -228,7 +232,7 @@ class MctslandBotPlayer:
         mcts_use_history_prior: If true, root-edge priors from ``history`` when expanding.
         mcts_depth: Max rollout ``apply`` steps per simulation (CLI ``--mcts-depth``).
         mcts_breadth: Max children expanded per tree node (CLI ``--mcts-breadth``).
-        _rookie: Rookie delegate for non-attack phases and reinforce consolidation.
+        _rookie: Rookie delegate for deploy/fortify and shared reinforce attack planning.
         _episode_decisions: ``(key_str, seat)`` for each attack choice logged this game.
     """
 
@@ -304,7 +308,7 @@ class MctslandBotPlayer:
             return None
         m = self.sim.m
         if state.phase == GamePhase.REINFORCE:
-            return self._rookie._reinforce(state, m, rng)
+            return self._reinforce(state, m, rng)
         if state.phase == GamePhase.ATTACK:
             return self._attack(state, rng)
         if state.phase == GamePhase.DEPLOY:
@@ -322,6 +326,46 @@ class MctslandBotPlayer:
                 if winner_seat is not None and seat == winner_seat:
                     row["wins"] = int(row.get("wins", 0)) + 1
         self._episode_decisions.clear()
+
+    # -------------------------------------------------------------------------
+    # REINFORCE (Rookie attack plan; consolidate to ATT_UNITS_CAP)
+    # -------------------------------------------------------------------------
+
+    def _smart_consolidate_one(self, state: GameState, m: MapData) -> Optional[MoveUnits]:
+        """
+        One consolidation step toward ``_rookie._stored_attack`` attacker.
+
+        Same greedy neighbor pull as Rookie, but stops at ``ATT_UNITS_CAP`` (5) so combat
+        matches the capped cluster strength used in attack-state keys.
+        """
+        r = self._rookie
+        if r._stored_attack is None:
+            return None
+        src_att, _ = r._stored_attack
+        if int(state.units[src_att]) >= ATT_UNITS_CAP:
+            return None
+        for nb in m.neighbors(src_att):
+            if int(state.owners[nb]) != self.seat:
+                continue
+            if int(state.units[nb]) <= 1:
+                continue
+            mv = MoveUnits(nb, src_att, 1)
+            if mv in self.sim.legal_actions(state):
+                return mv
+        return None
+
+    def _reinforce(self, state: GameState, m: MapData, rng: np.random.Generator) -> Action:
+        """Plan attack via Rookie; consolidate to ``ATT_UNITS_CAP``; then ``EndReinforce``."""
+        r = self._rookie
+        if r._stored_attack is None:
+            r._weighted_options = r._calculate_weighted_attacks(state, m, False)
+            r._stored_attack = r._select_best_attack(rng)
+        if r._stored_attack is None:
+            r._stored_attack = r._find_attackable_border_tile(state, m)
+        mv = self._smart_consolidate_one(state, m)
+        if mv is not None:
+            return mv
+        return EndReinforce()
 
     # -------------------------------------------------------------------------
     # State key
