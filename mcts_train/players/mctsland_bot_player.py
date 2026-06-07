@@ -30,7 +30,7 @@ After each game, :meth:`notify_game_over` updates ``history`` for logged attack 
 **State key** (per ``(src, dst)`` candidate)
 
 ``(att_units, def_units, mission_bucket, coin_kind, att_cont_bucket, def_cont_bucket,
-def_rank_bucket)`` where
+def_land_bucket)`` where
 ``att_units`` is ``min(units[src] + sum(units[t]-1 for connected own t != src), 5)`` — armies on
 the attacking tile **plus** spare from the connected own cluster (not “movable pool only”, which
 was 0 for a lone 1-unit attacker).
@@ -44,9 +44,9 @@ If several tokens match ``dst``, the maximum ``coin_kind`` among them is used.
 need to fully own the continent of ``dst`` — bucketed as ``1`` (need ≤1), ``2`` (need 2), ``3``
 (need 3+). Uses :func:`mcts_train.missions.continent_missing_for_territory` on the current board
 (before combat).
-``def_rank_bucket``: competition rank of the **defender** by owned territory count among living
-players — ``1`` = most lands, ``2`` = next tier, ``3`` = third tier, ``4`` = rank 4+ (ties share
-a rank, e.g. ``1,2,2,4``). From :func:`mcts_train.missions.player_land_rank_bucket`.
+``def_land_bucket``: how many territories the **defender** owns — ``1`` / ``2`` / ``3`` / ``4``
+(``4`` = 4+ owned tiles). Elimination-oriented (small empire → low bucket). From
+:func:`mcts_train.missions.player_land_count_bucket`.
 Old history keys are back-compat padded on load (4-field → ``(1,1,4)``; 6-field → ``(4,)``).
 
 **Training vs inference**
@@ -84,7 +84,7 @@ from ..missions import (
     bucket_lands_to_conquer,
     continent_missing_for_territory,
     mission_territory_values,
-    player_land_rank_bucket,
+    player_land_count_bucket,
 )
 from ..paths import data_dir, repo_root
 from ..simulator import (
@@ -437,7 +437,7 @@ class MctslandBotPlayer:
         def_cont_bucket = bucket_lands_to_conquer(
             continent_missing_for_territory(m, state.owners, def_seat, dst)
         )
-        def_rank_bucket = player_land_rank_bucket(state.owners, state.eliminated, def_seat)
+        def_land_bucket = player_land_count_bucket(state.owners, def_seat)
         return (
             att_units,
             def_units,
@@ -445,7 +445,7 @@ class MctslandBotPlayer:
             coin_kind,
             att_cont_bucket,
             def_cont_bucket,
-            def_rank_bucket,
+            def_land_bucket,
         )
 
     def _lookup_stats(self, key_str: str) -> Tuple[int, int]:

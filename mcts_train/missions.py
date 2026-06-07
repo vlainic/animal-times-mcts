@@ -209,6 +209,18 @@ def player_land_rank_bucket(owners: np.ndarray, eliminated: np.ndarray, seat: in
     return min(int(rank_by_seat.get(seat, 4)), 4)
 
 
+def player_land_count_bucket(owners: np.ndarray, seat: int) -> int:
+    """
+    Bucket how many territories ``seat`` owns: ``1`` / ``2`` / ``3`` / ``4`` (``4`` = 4+ tiles).
+
+    Elimination-oriented: small empires bucket low, large ones bucket high (opposite of rank).
+    """
+    n = _count_player_territories(owners, seat)
+    if n <= 0:
+        return 1
+    return min(n, 4)
+
+
 def _find_elimination_target_seat(
     animal: str, player_names: Tuple[str, ...], eliminated: np.ndarray
 ) -> int:

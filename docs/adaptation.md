@@ -47,4 +47,5 @@ Do **not** use old paths like `mcts_train/scripts/...` or `Python/mcts_train/...
 ## History JSON
 
 Re-run self-play after attack-state key changes; old keys load with padding (4-field → ``(1,1,4)``;
-6-field → ``(4,)`` for defender rank) but stats will not align with new 7-field keys.
+6-field → ``(4,)`` for defender land bucket) but stats will not align with new 7-field semantics
+(7th field is defender **land count**, not rank).
