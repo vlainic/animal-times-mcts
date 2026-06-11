@@ -4,10 +4,10 @@ Mctsland bot — attack decisions from historical visit/win stats; other phases 
 **Non-attack phases**
 
 DEPLOY and FORTIFY use the **same** implementations as :class:`RookieBotPlayer` (via
-``_rookie._deploy`` / ``_fortify``). **REINFORCE** follows the same attack-planning flow as
-Rookie but consolidates onto the planned attacker until ``ATT_UNITS_CAP`` (**5**) units — aligned
-with the attack-state key — instead of Rookie's GDScript **4**-unit stop. Only ATTACK combat
-selection differs.
+``_rookie._deploy`` / ``_fortify``). **REINFORCE** ranks attack options like Rookie, then
+**cascades** consolidation across the top **3** distinct attacker tiles (by weight): fill #1 to
+``ATT_UNITS_CAP`` (**5**), keep those armies, then #2, then #3. ``_stored_attack`` is rank #1
+(deterministic). Only ATTACK combat selection differs.
 
 **Attack and chain attacks**
 
@@ -257,6 +257,8 @@ class MctslandBotPlayer:
     _rookie: RookieBotPlayer = field(init=False, repr=False)
     _episode_decisions: List[Tuple[str, int]] = field(default_factory=list, repr=False)
     _chain_anchor_ucb1: Optional[float] = field(default=None, init=False, repr=False)
+    _consolidate_targets: List[Tuple[int, int]] = field(default_factory=list, init=False, repr=False)
+    _consolidate_idx: int = field(default=0, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.mcts_rollout not in ("uniform", "rookie"):
@@ -301,12 +303,16 @@ class MctslandBotPlayer:
         """Clear Rookie turn state and chain anchor when the active seat changes."""
         self._rookie.reset_for_new_turn()
         self._chain_anchor_ucb1 = None
+        self._consolidate_targets = []
+        self._consolidate_idx = 0
 
     def reset_for_new_game(self) -> None:
         """Clear per-game attack decision log (call at start of each match)."""
         self._episode_decisions.clear()
         self._rookie.reset_for_new_turn()
         self._chain_anchor_ucb1 = None
+        self._consolidate_targets = []
+        self._consolidate_idx = 0
 
     def choose_action(self, state: GameState, rng: np.random.Generator) -> Optional[Action]:
         """Same phase routing as :meth:`RookieBotPlayer.choose_action`; ATTACK uses table/MCTS."""
@@ -336,40 +342,62 @@ class MctslandBotPlayer:
         self._episode_decisions.clear()
 
     # -------------------------------------------------------------------------
-    # REINFORCE (Rookie attack plan; consolidate to ATT_UNITS_CAP)
+    # REINFORCE (top-3 cascade consolidate to ATT_UNITS_CAP)
     # -------------------------------------------------------------------------
+
+    def _build_consolidate_targets(
+        self, state: GameState, m: MapData
+    ) -> List[Tuple[int, int]]:
+        """Top 3 weighted (src, dst) attacks; dedupe by attacker tile; border fallback."""
+        r = self._rookie
+        r._weighted_options = r._calculate_weighted_attacks(state, m, False)
+        seen_src: Set[int] = set()
+        targets: List[Tuple[int, int]] = []
+        for o in r._weighted_options[:3]:
+            src = int(o["src"])
+            dst = int(o["dst"])
+            if src in seen_src:
+                continue
+            seen_src.add(src)
+            targets.append((src, dst))
+        if not targets:
+            fb = r._find_attackable_border_tile(state, m)
+            if fb is not None:
+                targets.append(fb)
+        return targets
 
     def _smart_consolidate_one(self, state: GameState, m: MapData) -> Optional[MoveUnits]:
         """
-        One consolidation step toward ``_rookie._stored_attack`` attacker.
+        One greedy +1 pull toward the current cascade target attacker tile.
 
-        Same greedy neighbor pull as Rookie, but stops at ``ATT_UNITS_CAP`` (5) so combat
-        matches the capped cluster strength used in attack-state keys.
+        Advances through ``_consolidate_targets`` when a tile hits ``ATT_UNITS_CAP`` or has
+        no legal donors; armies already moved stay on the board for later targets.
         """
-        r = self._rookie
-        if r._stored_attack is None:
-            return None
-        src_att, _ = r._stored_attack
-        if int(state.units[src_att]) >= ATT_UNITS_CAP:
-            return None
-        for nb in m.neighbors(src_att):
-            if int(state.owners[nb]) != self.seat:
+        while self._consolidate_idx < len(self._consolidate_targets):
+            src_att, _ = self._consolidate_targets[self._consolidate_idx]
+            if int(state.units[src_att]) >= ATT_UNITS_CAP:
+                self._consolidate_idx += 1
                 continue
-            if int(state.units[nb]) <= 1:
-                continue
-            mv = MoveUnits(nb, src_att, 1)
-            if mv in self.sim.legal_actions(state):
-                return mv
+            for nb in m.neighbors(src_att):
+                if int(state.owners[nb]) != self.seat:
+                    continue
+                if int(state.units[nb]) <= 1:
+                    continue
+                mv = MoveUnits(nb, src_att, 1)
+                if mv in self.sim.legal_actions(state):
+                    return mv
+            self._consolidate_idx += 1
         return None
 
     def _reinforce(self, state: GameState, m: MapData, rng: np.random.Generator) -> Action:
-        """Plan attack via Rookie; consolidate to ``ATT_UNITS_CAP``; then ``EndReinforce``."""
+        """Cascade consolidate top-3 attack attackers to ``ATT_UNITS_CAP``; ``EndReinforce``."""
         r = self._rookie
-        if r._stored_attack is None:
-            r._weighted_options = r._calculate_weighted_attacks(state, m, False)
-            r._stored_attack = r._select_best_attack(rng)
-        if r._stored_attack is None:
-            r._stored_attack = r._find_attackable_border_tile(state, m)
+        if not self._consolidate_targets:
+            self._consolidate_targets = self._build_consolidate_targets(state, m)
+            self._consolidate_idx = 0
+            r._stored_attack = (
+                self._consolidate_targets[0] if self._consolidate_targets else None
+            )
         mv = self._smart_consolidate_one(state, m)
         if mv is not None:
             return mv
