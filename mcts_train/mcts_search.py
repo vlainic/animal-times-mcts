@@ -26,7 +26,7 @@ import numpy as np
 
 from .map_data import MapData
 from .missions import MissionSpec, _find_elimination_target_seat
-from .simulator import Action, Combat, Simulator
+from .simulator import Action, Combat, EndAttack, Simulator
 from .state import GamePhase, GameState
 
 RolloutKind = Literal["uniform", "rookie"]
@@ -506,3 +506,146 @@ def run_mcts_attack(
             if int(rng.integers(0, 2)) == 0:
                 best_action = action
     return best_action
+
+
+def run_mcts_spree(
+    sim: Simulator,
+    root_state: GameState,
+    root_seat: int,
+    chosen_combat: Combat,
+    iterations: int,
+    rng: np.random.Generator,
+    *,
+    ucb_c: float = DEFAULT_UCB_C,
+    rollout_kind: RolloutKind = "uniform",
+    spree_prior: Optional[Tuple[int, float]] = None,
+    mcts_depth: int = DEFAULT_MCTS_DEPTH,
+    mcts_breadth: int = DEFAULT_MCTS_BREADTH,
+) -> bool:
+    """
+    Ephemeral MCTS: ``EndAttack`` vs continue with ``chosen_combat``.
+
+    Returns:
+        ``True`` if Continue (issue ``chosen_combat``) wins; ``False`` if ``EndAttack`` wins.
+    """
+    if iterations <= 0:
+        return True
+    depth_lim = max(1, int(mcts_depth))
+    breadth_lim = max(1, int(mcts_breadth))
+
+    state0 = root_state.copy()
+    if state0.phase != GamePhase.ATTACK:
+        return False
+    if state0.current_player_seat() != root_seat:
+        return False
+
+    legal = sim.legal_actions(state0)
+    root_actions: List[Action] = []
+    end_attack = EndAttack()
+    if end_attack in legal:
+        root_actions.append(end_attack)
+    if chosen_combat in legal:
+        root_actions.append(chosen_combat)
+    if not root_actions:
+        return False
+
+    def _prior_for_action(a: Action) -> Tuple[int, float]:
+        if a == chosen_combat and spree_prior is not None:
+            v, m = spree_prior
+            return max(0, int(v)), float(m)
+        return 0, 0.5
+
+    root = MctsNode(
+        state=state0,
+        parent=None,
+        parent_action=None,
+        children={},
+        untried=[],
+    )
+    root.untried = _limited_untried(
+        root_actions,
+        root,
+        rng,
+        breadth_lim,
+        ucb_c,
+        _prior_for_action if spree_prior is not None else None,
+    )
+
+    for _ in range(iterations):
+        path: List[MctsNode] = []
+        node = root
+
+        while True:
+            if sim.is_terminal(node.state):
+                z = _terminal_win_z(sim, node.state, root_seat)
+                _backup(path, z)
+                break
+
+            if node.untried:
+                action = node.untried.pop()
+                child_state = node.state.copy()
+                sim.apply(child_state, action)
+
+                prior_v = 0
+                prior_mean = 0.5
+                if (
+                    node is root
+                    and action == chosen_combat
+                    and spree_prior is not None
+                ):
+                    prior_v, prior_mean = spree_prior
+                    prior_v = max(0, int(prior_v))
+                    prior_mean = float(prior_mean)
+
+                untried_next = _limited_untried(
+                    sim.legal_actions(child_state),
+                    node,
+                    rng,
+                    breadth_lim,
+                    ucb_c,
+                    None,
+                )
+
+                child = MctsNode(
+                    state=child_state,
+                    parent=node,
+                    parent_action=action,
+                    children={},
+                    untried=untried_next,
+                    visits=prior_v,
+                    total_z=prior_mean * float(prior_v) if prior_v > 0 else 0.0,
+                )
+                node.children[action] = child
+                path.append(child)
+
+                z = _rollout(
+                    sim,
+                    child_state,
+                    root_seat=root_seat,
+                    rollout_kind=rollout_kind,
+                    rng=rng,
+                    mcts_depth=depth_lim,
+                )
+                _backup(path, z)
+                break
+
+            if not node.children:
+                z = _terminal_win_z(sim, node.state, root_seat)
+                _backup(path, z)
+                break
+
+            node = _ucb_best_child(node, ucb_c=ucb_c, rng=rng)
+            path.append(node)
+
+    if not root.children:
+        return False
+
+    continue_visits = root.children.get(chosen_combat)
+    end_visits = root.children.get(end_attack)
+    cv = continue_visits.visits if continue_visits is not None else 0
+    ev = end_visits.visits if end_visits is not None else 0
+    if cv > ev:
+        return True
+    if cv < ev:
+        return False
+    return int(rng.integers(0, 2)) == 0

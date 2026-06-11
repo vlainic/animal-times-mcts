@@ -126,7 +126,7 @@ def _run_calibration_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     m_breadth = int(chunk_args["mcts_breadth"])
     full_attack = bool(chunk_args["full_attack"])
 
-    mcts_history: Dict[str, Dict[str, int]] = {}
+    mcts_history = {}
     hist_path_str = chunk_args.get("mcts_history_path")
     if hist_path_str:
         mcts_history = load_mcts_history_for_inference(Path(hist_path_str))
@@ -213,7 +213,7 @@ def _run_calibration_serial(
     rotate_seats: bool,
     max_steps: int,
     mission_pool: str,
-    mcts_history: Dict[str, Dict[str, int]],
+    mcts_history,
     m_iters: int,
     m_rollout: RolloutKind,
     m_prior: bool,
@@ -414,13 +414,27 @@ def main() -> None:
 
     hist_path: Optional[Path] = None
     hist_path_str: Optional[str] = None
-    mcts_history: Dict[str, Dict[str, int]] = {}
+    mcts_history = {}
     if args.mcts_history is not None:
+        from mcts_train.players.mctsland_bot_player import (
+            HISTORY_ATTACK,
+            HISTORY_SPREE,
+            normalize_history,
+        )
+
         hist_path = resolve_mcts_history_path(args.mcts_history)
         hist_path_str = str(hist_path)
         mcts_history = load_mcts_history_for_inference(args.mcts_history)
-        print("history file:", hist_path, "keys", len(mcts_history))
-        if len(mcts_history) == 0:
+        h = normalize_history(mcts_history)
+        print(
+            "history file:",
+            hist_path,
+            "attack",
+            len(h[HISTORY_ATTACK]),
+            "spree",
+            len(h[HISTORY_SPREE]),
+        )
+        if len(h[HISTORY_ATTACK]) == 0 and len(h[HISTORY_SPREE]) == 0:
             print(
                 "warning: history has 0 keys — Mctsland runs without JSON priors "
                 "(check path; use data/NAME.json from repo root)"

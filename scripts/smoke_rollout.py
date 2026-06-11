@@ -171,7 +171,7 @@ def resolve_mcts_history_path(path: Path) -> Path:
     return resolve_history_json_path(path)
 
 
-def load_mcts_history_for_inference(path: Path) -> Dict[str, Dict[str, int]]:
+def load_mcts_history_for_inference(path: Path):
     from mcts_train.players.mctsland_bot_player import load_history_from_json
 
     return load_history_from_json(path)
@@ -181,7 +181,7 @@ def _make_bot(
     seat: int,
     sim: Simulator,
     type_id: int,
-    mcts_history: Dict[str, Dict[str, int]],
+    mcts_history,
     mcts_history_readonly: bool,
     *,
     mcts_iterations: int = DEFAULT_MCTS_ITERATIONS,
@@ -221,7 +221,7 @@ def run_one_rollout(
     n_bots: int,
     seat_types: Tuple[int, ...],
     *,
-    mcts_history: Dict[str, Dict[str, int]],
+    mcts_history,
     mcts_history_readonly: bool,
     mission_pool: str,
     max_steps: Optional[int] = None,
@@ -508,10 +508,24 @@ def main() -> None:
     sim = Simulator(combat_one_round_only=bool(args.one_round_only), log_events=want_log)
     mcts_history_readonly = False
     if args.mcts_history is not None:
+        from mcts_train.players.mctsland_bot_player import (
+            HISTORY_ATTACK,
+            HISTORY_SPREE,
+            normalize_history,
+        )
+
         hist_path = resolve_mcts_history_path(args.mcts_history)
         mcts_history = load_mcts_history_for_inference(args.mcts_history)
         mcts_history_readonly = True
-        print("mcts inference history:", hist_path, "keys", len(mcts_history))
+        h = normalize_history(mcts_history)
+        print(
+            "mcts inference history:",
+            hist_path,
+            "attack",
+            len(h[HISTORY_ATTACK]),
+            "spree",
+            len(h[HISTORY_SPREE]),
+        )
     else:
         mcts_history = {}
 

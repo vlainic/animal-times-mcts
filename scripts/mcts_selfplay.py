@@ -42,9 +42,14 @@ from mcts_train.mcts_search import (
     DEFAULT_MCTS_ITERATIONS,
 )
 from mcts_train.players.mctsland_bot_player import (
+    HISTORY_ATTACK,
+    HISTORY_SPREE,
+    HistoryBundle,
     MctslandBotPlayer,
     load_history_from_json,
+    normalize_history,
     resolve_history_json_path,
+    save_history_to_json,
 )
 from mcts_train.simulator import Simulator
 from mcts_train.paths import data_dir
@@ -58,16 +63,53 @@ class MatchStuck(RuntimeError):
     """Outer step exceeded micro-step cap without ending the active turn."""
 
 
-def load_history(path: Path) -> Dict[str, Dict[str, int]]:
+def load_history(path: Path) -> HistoryBundle:
     """Load history JSON for training (writable table during the run)."""
     return load_history_from_json(path)
 
 
-def save_history(path: Path, history: Dict[str, Dict[str, int]]) -> None:
-    """Write history table to JSON (sorted keys for stable diffs)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    ordered = {k: history[k] for k in sorted(history.keys())}
-    path.write_text(json.dumps(ordered, indent=2) + "\n", encoding="utf-8")
+def save_history(path: Path, history: HistoryBundle) -> None:
+    """Write nested attack + spree history JSON."""
+    save_history_to_json(path, history)
+
+
+def _history_key_counts(history: HistoryBundle) -> tuple[int, int]:
+    h = normalize_history(history)
+    return len(h[HISTORY_ATTACK]), len(h[HISTORY_SPREE])
+
+
+def merge_history_tables(
+    base: HistoryBundle,
+    *deltas: HistoryBundle,
+) -> HistoryBundle:
+    """Sum ``visits`` and ``wins`` per key in both sections (mutates and returns ``base``)."""
+    base = normalize_history(base)
+    for table in (HISTORY_ATTACK, HISTORY_SPREE):
+        tbl = base.setdefault(table, {})
+        for delta in deltas:
+            for key, row in normalize_history(delta).get(table, {}).items():
+                merged = tbl.setdefault(key, {"visits": 0, "wins": 0})
+                merged["visits"] = int(merged.get("visits", 0)) + int(row.get("visits", 0))
+                merged["wins"] = int(merged.get("wins", 0)) + int(row.get("wins", 0))
+    return base
+
+
+def _history_delta(
+    before: HistoryBundle,
+    after: HistoryBundle,
+) -> HistoryBundle:
+    """Return per-key visit/win increments from ``before`` to ``after``."""
+    delta: HistoryBundle = {HISTORY_ATTACK: {}, HISTORY_SPREE: {}}
+    before_n = normalize_history(before)
+    after_n = normalize_history(after)
+    for table in (HISTORY_ATTACK, HISTORY_SPREE):
+        for key, row in after_n.get(table, {}).items():
+            prev = before_n.get(table, {}).get(key, {"visits": 0, "wins": 0})
+            dv = int(row.get("visits", 0)) - int(prev.get("visits", 0))
+            dw = int(row.get("wins", 0)) - int(prev.get("wins", 0))
+            if dv or dw:
+                delta[table][key] = {"visits": dv, "wins": dw}
+    return delta
 
 
 def _resolve_workers(workers: int) -> int:
@@ -82,38 +124,10 @@ def _split_match_chunks(total: int, n_workers: int) -> List[int]:
     return [base + (1 if i < rem else 0) for i in range(n_workers)]
 
 
-def merge_history_tables(
-    base: Dict[str, Dict[str, int]],
-    *deltas: Dict[str, Dict[str, int]],
-) -> Dict[str, Dict[str, int]]:
-    """Sum ``visits`` and ``wins`` per key into ``base`` (mutates and returns ``base``)."""
-    for delta in deltas:
-        for key, row in delta.items():
-            merged = base.setdefault(key, {"visits": 0, "wins": 0})
-            merged["visits"] = int(merged.get("visits", 0)) + int(row.get("visits", 0))
-            merged["wins"] = int(merged.get("wins", 0)) + int(row.get("wins", 0))
-    return base
-
-
-def _history_delta(
-    before: Dict[str, Dict[str, int]],
-    after: Dict[str, Dict[str, int]],
-) -> Dict[str, Dict[str, int]]:
-    """Return per-key visit/win increments from ``before`` to ``after``."""
-    delta: Dict[str, Dict[str, int]] = {}
-    for key, row in after.items():
-        prev = before.get(key, {"visits": 0, "wins": 0})
-        dv = int(row.get("visits", 0)) - int(prev.get("visits", 0))
-        dw = int(row.get("wins", 0)) - int(prev.get("wins", 0))
-        if dv or dw:
-            delta[key] = {"visits": dv, "wins": dw}
-    return delta
-
-
 def run_one_match(
     sim: Simulator,
     n_bots: int,
-    history: Dict[str, Dict[str, int]],
+    history: HistoryBundle,
     max_steps: int,
     *,
     mcts_iterations: int,
@@ -188,7 +202,7 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     n_bots = int(chunk_args["n_bots"])
     chunk_matches = int(chunk_args["chunk_matches"])
     max_steps = int(chunk_args["max_steps"])
-    initial_history: Dict[str, Dict[str, int]] = copy.deepcopy(chunk_args["initial_history"])
+    initial_history: HistoryBundle = copy.deepcopy(chunk_args["initial_history"])
 
     m_iters = int(chunk_args["mcts_iterations"])
     m_rollout = str(chunk_args["mcts_rollout"])
@@ -335,7 +349,7 @@ def main() -> None:
     else:
         history_path = resolve_history_json_path(args.history)
     history = load_history(history_path)
-    initial_keys = len(history)
+    initial_attack, initial_spree = _history_key_counts(history)
     print("history file:", history_path)
 
     workers = _resolve_workers(int(args.workers))
@@ -374,13 +388,16 @@ def main() -> None:
                 seat_wins[w] += 1
             if completed % save_every == 0:
                 save_history(history_path, history)
+                atk_n, spree_n = _history_key_counts(history)
                 print(
                     "match",
                     completed,
                     "/",
                     target_matches,
-                    "states",
-                    len(history),
+                    "attack",
+                    atk_n,
+                    "spree",
+                    spree_n,
                     "winner",
                     w,
                 )
@@ -420,13 +437,16 @@ def main() -> None:
                 completed += int(r["completed"])
                 stuck_restarts += int(r["stuck_restarts"])
                 save_history(history_path, history)
+                atk_n, spree_n = _history_key_counts(history)
                 print(
                     "saved",
                     completed,
                     "/",
                     target_matches,
-                    "states",
-                    len(history),
+                    "attack",
+                    atk_n,
+                    "spree",
+                    spree_n,
                 )
 
     save_history(history_path, history)
@@ -436,7 +456,18 @@ def main() -> None:
         print("stuck restarts:", stuck_restarts)
     if workers > 1:
         print("workers", workers)
-    print("states:", len(history), "(+", len(history) - initial_keys, "new)")
+    atk_n, spree_n = _history_key_counts(history)
+    print(
+        "attack keys:",
+        atk_n,
+        "(+",
+        atk_n - initial_attack,
+        "new) spree keys:",
+        spree_n,
+        "(+",
+        spree_n - initial_spree,
+        "new)",
+    )
     print("seat wins:", dict(enumerate(seat_wins)))
 
 

@@ -19,13 +19,12 @@ priors on root edges). When ``mcts_iterations == 0``: legacy **UCB1 bandit** on 
 Requires ``Simulator(combat_one_round_only=False)`` for chain attacks. When each combat is a
 clean overrun (conquered, no defender counter-conquest, zero attacker losses), the sim stays in
 ATTACK with ``post_conquest_mode=True`` and Mctsland can issue further combats. Unlike Rookie's
-hard cap of 3, **Mctsland has no fixed chain limit**. Instead a UCB1 quality gate controls the
-chain: the first combat's bandit score becomes the *anchor*, and each post-attack must score at
-least a declining fraction of that anchor (90 % for the 1st post, 80 % for the 2nd, …, 50 % floor
-from the 5th post onward). The chain ends when the gate fails, there are no legal combats, the sim
-leaves ATTACK, or AoD is active (max one combat under attack-of-despair).
+hard cap of 3, **Mctsland has no fixed chain limit**. Post-conquest continuation uses
+:func:`~mcts_train.mcts_search.run_mcts_spree` (``EndAttack`` vs continue with the attack MCTS
+pick) with a 5-field **spree** history key; the old declining UCB1 percentage gate is removed.
 
-After each game, :meth:`notify_game_over` updates ``history`` for logged attack keys (training).
+After each game, :meth:`notify_game_over` updates nested ``history["attack"]`` and
+``history["spree"]`` for logged keys (training).
 
 **State key** (per ``(src, dst)`` candidate)
 
@@ -47,7 +46,20 @@ need to fully own the continent of ``dst`` — bucketed as ``1`` (need ≤1), ``
 ``def_land_bucket``: how many territories the **defender** owns — ``1`` / ``2`` / ``3`` / ``4``
 (``4`` = 4+ owned tiles). Elimination-oriented (small empire → low bucket). From
 :func:`mcts_train.missions.player_land_count_bucket`.
-Old history keys are back-compat padded on load (4-field → ``(1,1,4)``; 6-field → ``(4,)``).
+Old attack history keys are back-compat padded on load (4-field → ``(1,1,4)``; 6-field → ``(4,)``).
+
+**Spree state key** (post-conquest continue decision, 5-tuple)
+
+``(is_mission, is_card, att_cont_bucket, def_land_bucket, ucb_rank)`` where ``is_mission`` /
+``is_card`` are ``0``/``1``; ``att_cont_bucket`` is attacker continent distance to full control
+of defender tile's continent; ``def_land_bucket`` is defender empire size; ``ucb_rank`` is the
+attack bandit score vs the first-combat anchor (``0`` = below 50 %, ``1`` = between, ``2`` = at or
+above anchor).
+
+**History JSON**
+
+Nested ``{"attack": {key: {visits, wins}}, "spree": {...}}``. Legacy flat attack-only files load
+into ``attack`` with empty ``spree``.
 
 **Training vs inference**
 
@@ -79,6 +91,7 @@ from ..mcts_search import (
     DEFAULT_MCTS_ITERATIONS,
     RolloutKind,
     run_mcts_attack,
+    run_mcts_spree,
 )
 from ..missions import (
     bucket_lands_to_conquer,
@@ -102,6 +115,12 @@ ATT_UNITS_CAP = 5
 DEF_UNITS_CAP = 5
 DEFAULT_WIN_RATE = 0.5
 UCB_C = math.sqrt(2.0)
+HISTORY_ATTACK = "attack"
+HISTORY_SPREE = "spree"
+
+HistoryTable = Dict[str, Dict[str, int]]
+HistoryBundle = Dict[str, HistoryTable]
+DEFAULT_HISTORY: HistoryBundle = {HISTORY_ATTACK: {}, HISTORY_SPREE: {}}
 
 _MCTS_TRAIN_ROOT = Path(__file__).resolve().parents[1]
 _PY_ROOT = repo_root()
@@ -141,12 +160,44 @@ def resolve_history_json_path(path: Path | str) -> Path:
     return candidates[0]
 
 
-def load_history_from_json(path: Path | str, *, warn: bool = True) -> Dict[str, Dict[str, int]]:
-    """
-    Load ``{key: {visits, wins}}`` from a training/inference JSON file.
+def _parse_history_table(raw: Any) -> HistoryTable:
+    """Parse one ``{key: {visits, wins}}`` section."""
+    if not isinstance(raw, dict):
+        return {}
+    out: HistoryTable = {}
+    for k, v in raw.items():
+        if not isinstance(v, dict):
+            continue
+        out[str(k)] = {
+            "visits": int(v.get("visits", 0)),
+            "wins": int(v.get("wins", 0)),
+        }
+    return out
 
+
+def _is_nested_history(raw: Dict[str, Any]) -> bool:
+    return HISTORY_ATTACK in raw or HISTORY_SPREE in raw
+
+
+def normalize_history(history: HistoryBundle | HistoryTable | None) -> HistoryBundle:
+    """Ensure nested ``attack`` + ``spree`` tables; wrap legacy flat attack maps."""
+    if not history:
+        return {HISTORY_ATTACK: {}, HISTORY_SPREE: {}}
+    if _is_nested_history(history):
+        h = history  # type: ignore[assignment]
+        return {
+            HISTORY_ATTACK: dict(h.get(HISTORY_ATTACK, {})),
+            HISTORY_SPREE: dict(h.get(HISTORY_SPREE, {})),
+        }
+    return {HISTORY_ATTACK: dict(history), HISTORY_SPREE: {}}
+
+
+def load_history_from_json(path: Path | str, *, warn: bool = True) -> HistoryBundle:
+    """
+    Load nested ``{attack, spree}`` history from JSON.
+
+    Legacy flat ``{key: {visits, wins}}`` files load into ``attack`` only.
     Relative paths are resolved via :func:`resolve_history_json_path`.
-    Returns an empty dict if the file is missing or empty (prints a warning when ``warn=True``).
     """
     p = resolve_history_json_path(path)
     if not p.is_file():
@@ -156,24 +207,33 @@ def load_history_from_json(path: Path | str, *, warn: bool = True) -> Dict[str, 
                 p,
                 f"(cwd={Path.cwd()!s}; try data/... at repo root)",
             )
-        return {}
+        return {HISTORY_ATTACK: {}, HISTORY_SPREE: {}}
     text = p.read_text(encoding="utf-8").strip()
     if not text:
         if warn:
             print("warning: mcts history file is empty — loaded 0 keys:", p)
-        return {}
+        return {HISTORY_ATTACK: {}, HISTORY_SPREE: {}}
     raw: Any = json.loads(text)
     if not isinstance(raw, dict):
         raise ValueError(f"history must be a JSON object, got {type(raw)}")
-    out: Dict[str, Dict[str, int]] = {}
-    for k, v in raw.items():
-        if not isinstance(v, dict):
-            continue
-        out[str(k)] = {
-            "visits": int(v.get("visits", 0)),
-            "wins": int(v.get("wins", 0)),
+    if _is_nested_history(raw):
+        return {
+            HISTORY_ATTACK: _parse_history_table(raw.get(HISTORY_ATTACK, {})),
+            HISTORY_SPREE: _parse_history_table(raw.get(HISTORY_SPREE, {})),
         }
-    return out
+    return {HISTORY_ATTACK: _parse_history_table(raw), HISTORY_SPREE: {}}
+
+
+def save_history_to_json(path: Path | str, history: HistoryBundle) -> None:
+    """Write nested ``attack`` + ``spree`` history (sorted keys per section)."""
+    h = normalize_history(history)
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        HISTORY_ATTACK: {k: h[HISTORY_ATTACK][k] for k in sorted(h[HISTORY_ATTACK])},
+        HISTORY_SPREE: {k: h[HISTORY_SPREE][k] for k in sorted(h[HISTORY_SPREE])},
+    }
+    p.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
 def _mission_bucket_for_tile(
@@ -224,6 +284,33 @@ def str_to_attack_key(s: str) -> Tuple[int, ...]:
     return t
 
 
+def spree_key_to_str(key: Tuple[int, ...]) -> str:
+    """Canonical JSON/history key for a 5-tuple spree state."""
+    return "(" + ",".join(str(k) for k in key) + ")"
+
+
+def str_to_spree_key(s: str) -> Tuple[int, int, int, int, int]:
+    """Parse ``spree_key_to_str`` output."""
+    inner = s.strip()
+    if inner.startswith("(") and inner.endswith(")"):
+        inner = inner[1:-1]
+    parts = [p.strip() for p in inner.split(",")]
+    if len(parts) != 5:
+        raise ValueError(f"invalid spree key: {s!r}")
+    return tuple(int(p) for p in parts)  # type: ignore[return-value]
+
+
+def ucb_rank_bucket(score: float, anchor: float) -> int:
+    """Discretize attack bandit score vs first-combat anchor: 0 / 1 / 2."""
+    if anchor <= 0.0:
+        return 1
+    if score < 0.5 * anchor:
+        return 0
+    if score >= anchor:
+        return 2
+    return 1
+
+
 @dataclass
 class MctslandBotPlayer:
     """
@@ -232,7 +319,7 @@ class MctslandBotPlayer:
     Attributes:
         seat: Player index this bot controls.
         sim: Environment for legality and map queries.
-        history: ``key -> {visits, wins}`` table for UCB lookup.
+        history: Nested ``attack`` / ``spree`` ``key -> {visits, wins}`` tables for UCB lookup.
         history_readonly: If true (inference), ``notify_game_over`` does not update ``history``.
         ucb_c: UCB exploration constant (bandit and MCTS selection).
         mcts_iterations: MCTS simulations per attack when > 0; ``0`` = legacy bandit only.
@@ -241,12 +328,12 @@ class MctslandBotPlayer:
         mcts_depth: Max rollout ``apply`` steps per simulation (CLI ``--mcts-depth``).
         mcts_breadth: Max children expanded per tree node (CLI ``--mcts-breadth``).
         _rookie: Rookie delegate for deploy/fortify and shared reinforce attack planning.
-        _episode_decisions: ``(key_str, seat)`` for each attack choice logged this game.
+        _episode_decisions: ``(table, key_str, seat)`` for each logged decision this game.
     """
 
     seat: int
     sim: Simulator
-    history: Dict[str, Dict[str, int]]
+    history: HistoryBundle
     history_readonly: bool = False
     ucb_c: float = UCB_C
     mcts_iterations: int = DEFAULT_MCTS_ITERATIONS
@@ -255,7 +342,7 @@ class MctslandBotPlayer:
     mcts_depth: int = DEFAULT_MCTS_DEPTH  # CLI: --mcts-depth
     mcts_breadth: int = DEFAULT_MCTS_BREADTH  # CLI: --mcts-breadth
     _rookie: RookieBotPlayer = field(init=False, repr=False)
-    _episode_decisions: List[Tuple[str, int]] = field(default_factory=list, repr=False)
+    _episode_decisions: List[Tuple[str, str, int]] = field(default_factory=list, repr=False)
     _chain_anchor_ucb1: Optional[float] = field(default=None, init=False, repr=False)
     _consolidate_targets: List[Tuple[int, int]] = field(default_factory=list, init=False, repr=False)
     _consolidate_idx: int = field(default=0, init=False, repr=False)
@@ -263,6 +350,7 @@ class MctslandBotPlayer:
     def __post_init__(self) -> None:
         if self.mcts_rollout not in ("uniform", "rookie"):
             raise ValueError(f"mcts_rollout must be 'uniform' or 'rookie', got {self.mcts_rollout!r}")
+        self.history = normalize_history(self.history)
         self._rookie = RookieBotPlayer(self.seat, self.sim)
 
     @classmethod
@@ -334,8 +422,9 @@ class MctslandBotPlayer:
     def notify_game_over(self, winner_seat: Optional[int]) -> None:
         """Training: backprop visits/wins. Inference (readonly): clear episode log only."""
         if not self.history_readonly:
-            for key, seat in self._episode_decisions:
-                row = self.history.setdefault(key, {"visits": 0, "wins": 0})
+            for table, key_str, seat in self._episode_decisions:
+                tbl = self.history.setdefault(table, {})
+                row = tbl.setdefault(key_str, {"visits": 0, "wins": 0})
                 row["visits"] = int(row.get("visits", 0)) + 1
                 if winner_seat is not None and seat == winner_seat:
                     row["wins"] = int(row.get("wins", 0)) + 1
@@ -476,14 +565,39 @@ class MctslandBotPlayer:
             def_land_bucket,
         )
 
-    def _lookup_stats(self, key_str: str) -> Tuple[int, int]:
-        row = self.history.get(key_str)
+    def _build_spree_key(
+        self,
+        state: GameState,
+        m: MapData,
+        chosen: Combat,
+        attack_score: float,
+    ) -> Tuple[int, int, int, int, int]:
+        """5-tuple spree key from chosen combat and attack bandit score vs anchor."""
+        dst = chosen.defender
+        mission_bucket = _mission_bucket_for_tile(m, state, self.seat, dst)
+        is_mission = 1 if mission_bucket > 0 else 0
+        is_card = 1 if self._hand_coin_kind_for_defender(state, dst) > 0 else 0
+        att_cont_bucket = bucket_lands_to_conquer(
+            continent_missing_for_territory(m, state.owners, self.seat, dst)
+        )
+        def_seat = int(state.owners[dst])
+        def_land_bucket = player_land_count_bucket(state.owners, def_seat)
+        anchor = (
+            self._chain_anchor_ucb1
+            if self._chain_anchor_ucb1 is not None
+            else attack_score
+        )
+        rank = ucb_rank_bucket(attack_score, anchor)
+        return (is_mission, is_card, att_cont_bucket, def_land_bucket, rank)
+
+    def _lookup_stats(self, table: str, key_str: str) -> Tuple[int, int]:
+        row = self.history.get(table, {}).get(key_str)
         if not row:
             return 0, 0
         return int(row.get("visits", 0)), int(row.get("wins", 0))
 
-    def _score_attack(self, key_str: str, total_visits: int) -> float:
-        visits, wins = self._lookup_stats(key_str)
+    def _score_key(self, table: str, key_str: str, total_visits: int) -> float:
+        visits, wins = self._lookup_stats(table, key_str)
         if visits <= 0:
             win_rate = DEFAULT_WIN_RATE
             n = 1
@@ -496,6 +610,9 @@ class MctslandBotPlayer:
             explore = self.ucb_c * math.sqrt(math.log(total_visits + 1.0) / float(n))
         return win_rate + explore
 
+    def _score_attack(self, key_str: str, total_visits: int) -> float:
+        return self._score_key(HISTORY_ATTACK, key_str, total_visits)
+
     def _score_chosen_combat(
         self, state: GameState, m: MapData, chosen: Combat
     ) -> Tuple[float, str]:
@@ -507,49 +624,66 @@ class MctslandBotPlayer:
                 self._build_attack_key(state, m, cmb.attacker, cmb.defender)
             )
             keys.append(key_str)
-        total_visits = sum(self._lookup_stats(k)[0] for k in keys)
+        total_visits = sum(self._lookup_stats(HISTORY_ATTACK, k)[0] for k in keys)
         key_str = attack_key_to_str(
             self._build_attack_key(state, m, chosen.attacker, chosen.defender)
         )
         return self._score_attack(key_str, total_visits), key_str
 
-    def _min_ucb_fraction_for_chain_post(self, post_index: int) -> float:
-        """
-        Minimum fraction of the anchor UCB1 score required for a chain post-attack.
+    def _history_prior_for_combat(self, state: GameState, m: MapData, cmb: Combat) -> Tuple[int, float]:
+        """``(prior_visits, prior_mean_z)`` for root combat expansion from JSON table."""
+        key_str = attack_key_to_str(
+            self._build_attack_key(state, m, cmb.attacker, cmb.defender)
+        )
+        visits, wins = self._lookup_stats(HISTORY_ATTACK, key_str)
+        if visits <= 0:
+            return 0, DEFAULT_WIN_RATE
+        return visits, float(wins) / float(visits)
 
-        post_index is the value of ``_attacks_this_turn`` *before* issuing the next combat
-        (0 = first attack, 1 = 1st post-attack, …).
+    def _history_prior_for_spree(self, spree_key_str: str) -> Tuple[int, float]:
+        """``(prior_visits, prior_mean_z)`` for spree Continue arm."""
+        visits, wins = self._lookup_stats(HISTORY_SPREE, spree_key_str)
+        if visits <= 0:
+            return 0, DEFAULT_WIN_RATE
+        return visits, float(wins) / float(visits)
 
-        Thresholds: 1→0.90, 2→0.80, 3→0.70, 4→0.60, 5+→0.50.
-        """
-        if post_index <= 0:
-            return 0.0
-        if post_index == 1:
-            return 0.90
-        if post_index == 2:
-            return 0.80
-        if post_index >= 5:
-            return 0.50
-        return {3: 0.70, 4: 0.60}[post_index]
+    def _spree_bandit_continue(self, spree_key_str: str) -> bool:
+        """Bandit-only spree fallback: continue if spree key UCB score >= default."""
+        score = self._score_key(HISTORY_SPREE, spree_key_str, 0)
+        return score >= DEFAULT_WIN_RATE
 
     def _log_attack_pick(
         self, state: GameState, m: MapData, chosen: Combat, *, post_index: int = 0
     ) -> None:
-        """Append ``[ATTACK_PICK]`` with bandit score and chain info when logging is on."""
+        """Append ``[ATTACK_PICK]`` with bandit score when logging is on."""
         score, key_str = self._score_chosen_combat(state, m, chosen)
         sn = m.territory_names[chosen.attacker]
         dn = m.territory_names[chosen.defender]
-        chain_info = ""
-        if post_index >= 1 and self._chain_anchor_ucb1 is not None:
-            min_frac = self._min_ucb_fraction_for_chain_post(post_index)
-            chain_info = (
-                f" post={post_index} anchor={self._chain_anchor_ucb1:.3f}"
-                f" min_frac={min_frac:.2f} gate=pass"
-            )
         self.sim._append_log(
             state,
             f"[ATTACK_PICK] seat={self.seat} score={score:.3f} key={key_str} "
-            f"att={sn} def={dn}{chain_info}",
+            f"att={sn} def={dn} post={post_index}",
+        )
+
+    def _log_spree_pick(
+        self,
+        state: GameState,
+        m: MapData,
+        chosen: Combat,
+        spree_key_str: str,
+        *,
+        attack_score: float,
+        decision: str,
+    ) -> None:
+        """Append ``[SPREE_PICK]`` when logging is on."""
+        sn = m.territory_names[chosen.attacker]
+        dn = m.territory_names[chosen.defender]
+        anchor = self._chain_anchor_ucb1
+        anchor_s = f"{anchor:.3f}" if anchor is not None else "none"
+        self.sim._append_log(
+            state,
+            f"[SPREE_PICK] seat={self.seat} decision={decision} key={spree_key_str} "
+            f"score={attack_score:.3f} anchor={anchor_s} att={sn} def={dn}",
         )
 
     # -------------------------------------------------------------------------
@@ -577,7 +711,7 @@ class MctslandBotPlayer:
             key_str = attack_key_to_str(key)
             keys.append(key_str)
             scored.append((0.0, cmb, key_str))
-        total_visits = sum(self._lookup_stats(k)[0] for k in keys)
+        total_visits = sum(self._lookup_stats(HISTORY_ATTACK, k)[0] for k in keys)
         for i, (_, cmb, key_str) in enumerate(scored):
             scored[i] = (self._score_attack(key_str, total_visits), cmb, key_str)
         scored.sort(key=lambda x: x[0], reverse=True)
@@ -587,29 +721,13 @@ class MctslandBotPlayer:
         _, chosen, _key_str = pick
         return chosen
 
-    def _history_prior_for_combat(self, state: GameState, m: MapData, cmb: Combat) -> Tuple[int, float]:
-        """``(prior_visits, prior_mean_z)`` for root combat expansion from JSON table."""
-        key_str = attack_key_to_str(
-            self._build_attack_key(state, m, cmb.attacker, cmb.defender)
-        )
-        visits, wins = self._lookup_stats(key_str)
-        if visits <= 0:
-            return 0, DEFAULT_WIN_RATE
-        return visits, float(wins) / float(visits)
-
     def _attack(self, state: GameState, rng: np.random.Generator) -> Action:
         """
         Post-conquest slide via Rookie delegate; combats via MCTS (or legacy bandit).
 
-        Chain attacks continue as long as each overrun produces a clean conquest
-        (``post_conquest_mode``). Unlike Rookie's 3-combat cap, Mctsland has **no fixed
-        chain limit** — the chain runs until the simulator leaves ATTACK, there are no
-        legal combats, AoD ends the first attack, or a UCB1 quality gate fails.
-
-        UCB1 gate: the first combat's bandit score is stored as the anchor. Each
-        subsequent post-attack must score at least a declining fraction of that anchor
-        (90 % → 80 % → 70 % → 60 % → 50 % floor at 5th+); failing the gate ends the
-        chain via ``EndAttack`` without issuing the weak attack.
+        First combat uses attack MCTS only. Post-conquest continuations run spree MCTS
+        (``EndAttack`` vs continue with the picked combat) keyed on mission/card/continent/
+        elimination/ucb_rank features.
         """
         m = self.sim.m
         slide = self._rookie._post_conquest_slide_stored(state, m)
@@ -646,23 +764,54 @@ class MctslandBotPlayer:
         if chosen is None or chosen not in self.sim.legal_actions(state):
             return EndAttack()
 
-        # UCB1 chain gate
-        score, key_str = self._score_chosen_combat(state, m, chosen)
+        score, attack_key_str = self._score_chosen_combat(state, m, chosen)
         post_index = self._rookie._attacks_this_turn
         if post_index == 0:
             self._chain_anchor_ucb1 = score
-        elif self._chain_anchor_ucb1 is not None:
-            min_frac = self._min_ucb_fraction_for_chain_post(post_index)
-            if score < self._chain_anchor_ucb1 * min_frac:
-                self.sim._append_log(
+        else:
+            spree_key = self._build_spree_key(state, m, chosen, score)
+            spree_key_str = spree_key_to_str(spree_key)
+            spree_prior: Optional[Tuple[int, float]] = None
+            if self.mcts_use_history_prior:
+                spree_prior = self._history_prior_for_spree(spree_key_str)
+            if self.mcts_iterations > 0:
+                continue_spree = run_mcts_spree(
+                    self.sim,
                     state,
-                    f"[ATTACK_PICK] seat={self.seat} chain_gate=fail post={post_index} "
-                    f"score={score:.3f} anchor={self._chain_anchor_ucb1:.3f} min_frac={min_frac:.2f}",
+                    self.seat,
+                    chosen,
+                    self.mcts_iterations,
+                    rng,
+                    ucb_c=self.ucb_c,
+                    rollout_kind=self.mcts_rollout,
+                    spree_prior=spree_prior,
+                    mcts_depth=self.mcts_depth,
+                    mcts_breadth=self.mcts_breadth,
+                )
+            else:
+                continue_spree = self._spree_bandit_continue(spree_key_str)
+            if not continue_spree:
+                self._log_spree_pick(
+                    state,
+                    m,
+                    chosen,
+                    spree_key_str,
+                    attack_score=score,
+                    decision="stop",
                 )
                 return EndAttack()
+            self._log_spree_pick(
+                state,
+                m,
+                chosen,
+                spree_key_str,
+                attack_score=score,
+                decision="continue",
+            )
+            self._episode_decisions.append((HISTORY_SPREE, spree_key_str, self.seat))
 
         self._rookie._stored_attack = (chosen.attacker, chosen.defender)
         self._rookie._attacks_this_turn += 1
         self._log_attack_pick(state, m, chosen, post_index=post_index)
-        self._episode_decisions.append((key_str, self.seat))
+        self._episode_decisions.append((HISTORY_ATTACK, attack_key_str, self.seat))
         return chosen
