@@ -96,3 +96,32 @@ Old 4-field JSON history keys are back-compat padded with ``(1, 1, 4)`` on load;
 with ``(4,)`` for missing defender land bucket (interpreted as 4+ lands).
 Existing ``data/mctsland_history*.json`` files need a fresh self-play run to align with the
 new 7-field keys.
+
+=============================================================================
+
+**Nested history JSON (attack + spree + placement)**
+
+```json
+{
+  "attack": { "(3,2,2,0,1,2,4)": { "visits": 10, "wins": 3 } },
+  "spree": { "(1,0,1,2,1)": { "visits": 5, "wins": 2 } },
+  "placement": { "(2,1,1,0,1,3,2)": { "visits": 8, "wins": 2 } }
+}
+```
+
+Legacy flat attack-only files load into ``attack`` with empty ``spree`` / ``placement``.
+Old archives: ``data/attack_only/``.
+
+**Spree state key** (post-conquest continue, 5-tuple)
+
+``(is_mission, is_card, att_cont_bucket, def_land_bucket, ucb_rank)`` — logged when spree MCTS
+chooses Continue. ``ucb_rank``: attack bandit score vs 1st-combat anchor (0 = &lt;50%, 1 = mid, 2 = ≥ anchor).
+Replaces declining-% chain gate.
+
+**Placement state key** (DEPLOY / FORTIFY redistribute, 7-tuple)
+
+``(att_units, def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)``
+
+- ``connectivity_all``: **other** own tiles in same component (0..5); alone tile → 0
+- ``connectivity_mission``: mission-relevant tiles in cluster (0..4)
+- Fortify skips isolated components via ``len(cluster) >= 2`` (equivalent to connectivity_all ≥ 1)

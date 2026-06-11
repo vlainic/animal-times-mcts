@@ -2631,7 +2631,7 @@ func sync_territory_units(territory_name: String, new_unit_count: int):
 
 ### Python `mcts_train` — offline simulator event log (Godot-adjacent, not runtime)
 
-- **Purpose**: `Python/mcts_train/` trains or smoke-tests Milos rules in-process (numpy, no Godot). **Not** bundled in export.
+- **Purpose**: `mcts_train/` (repo root) trains or smoke-tests Milos rules in-process (numpy, no Godot). **Not** bundled in export.
 - **`GameState` RNG**: ``rng_cards`` (deck + ``draw_from_deck`` reshuffles), ``rng_dice`` (``resolve_combat_milos``), ``rng_policy`` (bot / policy stochastic choices). ``copy()`` / ``deepcopy`` copies all three stream states.
 - **`Simulator.new_game(num_players, player_names, *, mission_pool="conquest")`**: ``numpy.random.SeedSequence()`` (OS entropy) → ``spawn(5)`` → **board** (shuffle + army sprinkle), **missions** (shuffle pool from ``Missions/missions.json`` then assign seats), **cards**, **dice**, **policy**. No caller-passed seeds (each game differs unless you add a dev replay hook later).
 - **`EventLog`** (`state.py`): ``enabled``, ``max_lines``, ``entries``; ``append`` no-ops when disabled; FIFO trim.
@@ -2641,10 +2641,15 @@ func sync_territory_units(territory_name: String, new_unit_count: int):
   - **`[CONTINENT]`**: emitted when ``_continent_just_completed`` fires after ownership write — player name, continent name, **``+N pending deploy bonus``** from ``CONTINENT_BONUS`` (0 if continent not in table).
   - **`[ELIM]`**: ``apply_player_elimination`` — eliminated vs eliminator names, cards transferred. **Triggered from combat** when a seat’s **owned tile count hits zero** (conquest removes defender’s last land; ``def_conq`` removes attacker’s last land).
   - **`[WIN]`**: ``_append_win_log`` — reasons ``mission_complete`` (``_maybe_declare_winner`` after ``EndFortify``) or ``elimination_mission`` (instant win inside ``apply_player_elimination``). Body uses **``MissionSpec.raw``** ``title`` + ``description`` from ``Missions/missions.json``, then ``mission_id`` / ``mission_type``; fallback sentences if ``raw`` empty (``_mission_win_log_detail``).
-- **Smoke**: ``Python/mcts_train/scripts/smoke_rollout.py`` — ``--bots`` pattern (``1``=Rookie, ``2``=Mctsland); MCTS knobs ``--mcts-iterations``, ``--mcts-depth``, ``--mcts-breadth``, ``--mcts-rollout``, ``--mcts-bandit-only``, ``--mcts-history``. ``mcts_calibrate.py`` batch win stats; ``mcts_search_smoke.py`` minimal MCTS legality test.
+- **Smoke**: ``scripts/smoke_rollout.py`` — ``--bots`` pattern (``1``=Rookie, ``2``=Mctsland); MCTS CLI flags; ``mcts_calibrate.py``; ``mcts_search_smoke.py``.
 
-### Python `mcts_train` — Mctsland ATTACK search (offline, not runtime)
+### Python `mcts_train` — Mctsland MCTS decisions (offline, not runtime)
 
-- **Module** ``mcts_search.py``: ``DEFAULT_MCTS_ITERATIONS=100``, ``DEFAULT_MCTS_DEPTH=5`` (CLI ``--mcts-depth``, max rollout ``apply`` steps), ``DEFAULT_MCTS_BREADTH=5`` (CLI ``--mcts-breadth``, max children per node, UCB1-ranked candidates). ``run_mcts_attack(sim, state, seat, iterations, rng, ...)`` builds a **new tree per combat choice**; picks most-visited root ``Combat``. Rollout truncated → ``z=0`` if not terminal. **Root**: only legal ``Combat`` arms; **history_prior** on root expansions from JSON table. **Child nodes**: full ``legal_actions``, breadth-limited ``untried``. **Not** using coarse ``(att,def,mission,coin)`` as node IDs (collision-safe).
-- **Bot** ``mctsland_bot_player.py``: ``mcts_iterations==0`` or ``--mcts-bandit-only`` → legacy UCB1 on JSON keys only; else MCTS. ``notify_game_over`` still updates sparse JSON by attack key (whole-game win).
-- **Self-play** ``mcts_selfplay.py``: same CLI; writes ``data/mctsland_history_<stamp>.json``.
+- **Module** ``mcts_search.py``: defaults 100 iters / depth 5 / breadth 5. **``run_mcts_attack``** — root legal ``Combat`` arms. **``run_mcts_spree``** — post-conquest ``EndAttack`` vs continue with picked combat. **``run_mcts_placement``** — caller-supplied ``DeployPlace`` / ``MoveUnits`` arms (one pick per army). Truncated rollouts → ``_eval_truncated``. Coarse keys are **not** MCTS node IDs (priors + post-game table only).
+- **Bot** ``mctsland_bot_player.py``:
+  - **REINFORCE**: Rookie top-3 cascade consolidate to 5 units per attacker tile.
+  - **DEPLOY / FORTIFY**: placement MCTS; fortify batches multi-tile own components (``len>=2``), strip then redistribute.
+  - **ATTACK**: attack MCTS; spree MCTS for chain (no declining-% gate).
+  - **History**: nested ``attack`` / ``spree`` / ``placement``; ``notify_game_over`` whole-game win backprop per logged key.
+- **Keys**: attack 7-tuple; spree 5-tuple; placement 7-tuple (``connectivity_all`` = other own tiles 0..5; ``connectivity_mission`` 0..4).
+- **Self-play** ``scripts/mcts_selfplay.py``: writes nested JSON to ``data/``; legacy flat → ``attack`` only.
