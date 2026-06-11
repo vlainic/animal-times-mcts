@@ -131,7 +131,8 @@ DEFAULT_HISTORY: HistoryBundle = {
     HISTORY_SPREE: {},
     HISTORY_PLACEMENT: {},
 }
-CONNECTIVITY_CAP = 5
+CONNECTIVITY_ALL_CAP = 5
+CONNECTIVITY_MISSION_CAP = 4
 
 _MCTS_TRAIN_ROOT = Path(__file__).resolve().parents[1]
 _PY_ROOT = repo_root()
@@ -660,16 +661,21 @@ class MctslandBotPlayer:
             return 0
         return bucket_lands_to_conquer(missing)
 
+    @staticmethod
+    def _connectivity_all_other(cluster: Set[int]) -> int:
+        """Other own tiles in the same component as ``t`` (excludes ``t``), capped 0..5."""
+        return min(max(0, len(cluster) - 1), CONNECTIVITY_ALL_CAP)
+
     def _connectivity_mission_count(
         self, state: GameState, m: MapData, cluster: Set[int]
     ) -> int:
-        """Mission-relevant tiles in ``cluster``, capped at ``CONNECTIVITY_CAP``."""
+        """Mission-relevant tiles in ``cluster``, capped at 0..4."""
         n = sum(
             1
             for t in cluster
             if _mission_bucket_for_tile(m, state, self.seat, t) > 0
         )
-        return min(n, CONNECTIVITY_CAP)
+        return min(n, CONNECTIVITY_MISSION_CAP)
 
     def _build_placement_key(
         self, state: GameState, m: MapData, t: int
@@ -682,7 +688,7 @@ class MctslandBotPlayer:
         is_mission = 1 if mission_bucket > 0 else 0
         is_card = 1 if self._hand_coin_kind_for_defender(state, t) > 0 else 0
         att_cont = self._placement_att_cont(state, m, t)
-        connectivity_all = min(len(cluster), CONNECTIVITY_CAP)
+        connectivity_all = self._connectivity_all_other(cluster)
         connectivity_mission = self._connectivity_mission_count(state, m, cluster)
         return (
             att_units,
