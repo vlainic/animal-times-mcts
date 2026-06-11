@@ -510,6 +510,7 @@ def main() -> None:
     if args.mcts_history is not None:
         from mcts_train.players.mctsland_bot_player import (
             HISTORY_ATTACK,
+            HISTORY_PLACEMENT,
             HISTORY_SPREE,
             normalize_history,
         )
@@ -525,6 +526,8 @@ def main() -> None:
             len(h[HISTORY_ATTACK]),
             "spree",
             len(h[HISTORY_SPREE]),
+            "placement",
+            len(h[HISTORY_PLACEMENT]),
         )
     else:
         mcts_history = {}

@@ -43,6 +43,7 @@ from mcts_train.mcts_search import (
 )
 from mcts_train.players.mctsland_bot_player import (
     HISTORY_ATTACK,
+    HISTORY_PLACEMENT,
     HISTORY_SPREE,
     HistoryBundle,
     MctslandBotPlayer,
@@ -69,22 +70,26 @@ def load_history(path: Path) -> HistoryBundle:
 
 
 def save_history(path: Path, history: HistoryBundle) -> None:
-    """Write nested attack + spree history JSON."""
+    """Write nested attack + spree + placement history JSON."""
     save_history_to_json(path, history)
 
 
-def _history_key_counts(history: HistoryBundle) -> tuple[int, int]:
+def _history_key_counts(history: HistoryBundle) -> tuple[int, int, int]:
     h = normalize_history(history)
-    return len(h[HISTORY_ATTACK]), len(h[HISTORY_SPREE])
+    return (
+        len(h[HISTORY_ATTACK]),
+        len(h[HISTORY_SPREE]),
+        len(h[HISTORY_PLACEMENT]),
+    )
 
 
 def merge_history_tables(
     base: HistoryBundle,
     *deltas: HistoryBundle,
 ) -> HistoryBundle:
-    """Sum ``visits`` and ``wins`` per key in both sections (mutates and returns ``base``)."""
+    """Sum ``visits`` and ``wins`` per key in all sections (mutates and returns ``base``)."""
     base = normalize_history(base)
-    for table in (HISTORY_ATTACK, HISTORY_SPREE):
+    for table in (HISTORY_ATTACK, HISTORY_SPREE, HISTORY_PLACEMENT):
         tbl = base.setdefault(table, {})
         for delta in deltas:
             for key, row in normalize_history(delta).get(table, {}).items():
@@ -99,10 +104,14 @@ def _history_delta(
     after: HistoryBundle,
 ) -> HistoryBundle:
     """Return per-key visit/win increments from ``before`` to ``after``."""
-    delta: HistoryBundle = {HISTORY_ATTACK: {}, HISTORY_SPREE: {}}
+    delta: HistoryBundle = {
+        HISTORY_ATTACK: {},
+        HISTORY_SPREE: {},
+        HISTORY_PLACEMENT: {},
+    }
     before_n = normalize_history(before)
     after_n = normalize_history(after)
-    for table in (HISTORY_ATTACK, HISTORY_SPREE):
+    for table in (HISTORY_ATTACK, HISTORY_SPREE, HISTORY_PLACEMENT):
         for key, row in after_n.get(table, {}).items():
             prev = before_n.get(table, {}).get(key, {"visits": 0, "wins": 0})
             dv = int(row.get("visits", 0)) - int(prev.get("visits", 0))
@@ -349,7 +358,7 @@ def main() -> None:
     else:
         history_path = resolve_history_json_path(args.history)
     history = load_history(history_path)
-    initial_attack, initial_spree = _history_key_counts(history)
+    initial_attack, initial_spree, initial_placement = _history_key_counts(history)
     print("history file:", history_path)
 
     workers = _resolve_workers(int(args.workers))
@@ -388,7 +397,7 @@ def main() -> None:
                 seat_wins[w] += 1
             if completed % save_every == 0:
                 save_history(history_path, history)
-                atk_n, spree_n = _history_key_counts(history)
+                atk_n, spree_n, place_n = _history_key_counts(history)
                 print(
                     "match",
                     completed,
@@ -398,6 +407,8 @@ def main() -> None:
                     atk_n,
                     "spree",
                     spree_n,
+                    "placement",
+                    place_n,
                     "winner",
                     w,
                 )
@@ -437,7 +448,7 @@ def main() -> None:
                 completed += int(r["completed"])
                 stuck_restarts += int(r["stuck_restarts"])
                 save_history(history_path, history)
-                atk_n, spree_n = _history_key_counts(history)
+                atk_n, spree_n, place_n = _history_key_counts(history)
                 print(
                     "saved",
                     completed,
@@ -447,6 +458,8 @@ def main() -> None:
                     atk_n,
                     "spree",
                     spree_n,
+                    "placement",
+                    place_n,
                 )
 
     save_history(history_path, history)
@@ -456,7 +469,7 @@ def main() -> None:
         print("stuck restarts:", stuck_restarts)
     if workers > 1:
         print("workers", workers)
-    atk_n, spree_n = _history_key_counts(history)
+    atk_n, spree_n, place_n = _history_key_counts(history)
     print(
         "attack keys:",
         atk_n,
@@ -466,6 +479,10 @@ def main() -> None:
         spree_n,
         "(+",
         spree_n - initial_spree,
+        "new) placement keys:",
+        place_n,
+        "(+",
+        place_n - initial_placement,
         "new)",
     )
     print("seat wins:", dict(enumerate(seat_wins)))

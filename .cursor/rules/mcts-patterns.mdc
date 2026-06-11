@@ -80,10 +80,13 @@ REINFORCE → ATTACK → DEPLOY → FORTIFY → (next player) → GAME_OVER
 - Root-aligned backup: `z = 1` iff terminal `winner == root_seat`
 
 ### MctslandBotPlayer
-- REINFORCE / DEPLOY / FORTIFY → Rookie delegate
-- ATTACK → `run_mcts_attack` when `mcts_iterations > 0`; else legacy UCB1 bandit on sparse JSON keys
-- Coarse attack key `(att_units, def_units, mission_bucket, coin_kind, ...)` for history/bandit — **not** MCTS node identity
-- Training: `notify_game_over` increments JSON visits/wins per logged attack key (whole-game win)
+- REINFORCE → Rookie cascade consolidate (top-3 attackers)
+- DEPLOY / FORTIFY → `run_mcts_placement` (one MCTS pick per army over destination tiles)
+- ATTACK → `run_mcts_attack`; post-conquest → `run_mcts_spree` (`EndAttack` vs continue)
+- Else legacy UCB1 bandit when `mcts_iterations == 0`
+- History JSON: nested `attack` / `spree` / `placement` tables (legacy flat → `attack` only)
+- Attack key 7-tuple; spree key 5-tuple; placement key 7-tuple `(att_units, def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)`
+- Training: `notify_game_over` increments visits/wins per logged key (whole-game win)
 - Inference: `from_history_file`, `history_readonly=True`
 
 ### CLI Scripts (repo root)

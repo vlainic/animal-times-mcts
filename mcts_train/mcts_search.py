@@ -649,3 +649,135 @@ def run_mcts_spree(
     if cv < ev:
         return False
     return int(rng.integers(0, 2)) == 0
+
+
+def run_mcts_placement(
+    sim: Simulator,
+    root_state: GameState,
+    root_seat: int,
+    root_actions: Sequence[Action],
+    iterations: int,
+    rng: np.random.Generator,
+    *,
+    ucb_c: float = DEFAULT_UCB_C,
+    rollout_kind: RolloutKind = "uniform",
+    action_prior: Optional[Callable[[Action], Tuple[int, float]]] = None,
+    mcts_depth: int = DEFAULT_MCTS_DEPTH,
+    mcts_breadth: int = DEFAULT_MCTS_BREADTH,
+) -> Optional[Action]:
+    """
+    Ephemeral MCTS over caller-supplied root placement arms (``DeployPlace`` / ``MoveUnits``).
+
+    Returns the most-visited root action, or ``None`` if ``root_actions`` is empty.
+    """
+    if iterations <= 0:
+        return None
+    depth_lim = max(1, int(mcts_depth))
+    breadth_lim = max(1, int(mcts_breadth))
+
+    state0 = root_state.copy()
+    if state0.current_player_seat() != root_seat:
+        return None
+
+    legal = sim.legal_actions(state0)
+    arms = [a for a in root_actions if a in legal]
+    if not arms:
+        return None
+
+    def _prior_for_action(a: Action) -> Tuple[int, float]:
+        if action_prior is not None:
+            v, m = action_prior(a)
+            return max(0, int(v)), float(m)
+        return 0, 0.5
+
+    root = MctsNode(
+        state=state0,
+        parent=None,
+        parent_action=None,
+        children={},
+        untried=[],
+    )
+    root.untried = _limited_untried(
+        arms,
+        root,
+        rng,
+        breadth_lim,
+        ucb_c,
+        _prior_for_action if action_prior is not None else None,
+    )
+
+    for _ in range(iterations):
+        path: List[MctsNode] = []
+        node = root
+
+        while True:
+            if sim.is_terminal(node.state):
+                z = _terminal_win_z(sim, node.state, root_seat)
+                _backup(path, z)
+                break
+
+            if node.untried:
+                action = node.untried.pop()
+                child_state = node.state.copy()
+                sim.apply(child_state, action)
+
+                prior_v = 0
+                prior_mean = 0.5
+                if node is root and action_prior is not None:
+                    prior_v, prior_mean = action_prior(action)
+                    prior_v = max(0, int(prior_v))
+                    prior_mean = float(prior_mean)
+
+                untried_next = _limited_untried(
+                    sim.legal_actions(child_state),
+                    node,
+                    rng,
+                    breadth_lim,
+                    ucb_c,
+                    None,
+                )
+
+                child = MctsNode(
+                    state=child_state,
+                    parent=node,
+                    parent_action=action,
+                    children={},
+                    untried=untried_next,
+                    visits=prior_v,
+                    total_z=prior_mean * float(prior_v) if prior_v > 0 else 0.0,
+                )
+                node.children[action] = child
+                path.append(child)
+
+                z = _rollout(
+                    sim,
+                    child_state,
+                    root_seat=root_seat,
+                    rollout_kind=rollout_kind,
+                    rng=rng,
+                    mcts_depth=depth_lim,
+                )
+                _backup(path, z)
+                break
+
+            if not node.children:
+                z = _terminal_win_z(sim, node.state, root_seat)
+                _backup(path, z)
+                break
+
+            node = _ucb_best_child(node, ucb_c=ucb_c, rng=rng)
+            path.append(node)
+
+    if not root.children:
+        return None
+
+    best_action: Optional[Action] = None
+    best_visits = -1
+    for action, child in root.children.items():
+        if child.visits > best_visits:
+            best_visits = child.visits
+            best_action = action
+        elif child.visits == best_visits and best_action is not None:
+            if int(rng.integers(0, 2)) == 0:
+                best_action = action
+    return best_action

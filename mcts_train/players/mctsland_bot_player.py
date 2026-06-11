@@ -3,8 +3,9 @@ Mctsland bot — attack decisions from historical visit/win stats; other phases 
 
 **Non-attack phases**
 
-DEPLOY and FORTIFY use the **same** implementations as :class:`RookieBotPlayer` (via
-``_rookie._deploy`` / ``_fortify``). **REINFORCE** ranks attack options like Rookie, then
+DEPLOY and FORTIFY use **placement MCTS** (:func:`~mcts_train.mcts_search.run_mcts_placement`) —
+one pick per army over destination tiles keyed by a 7-field **placement** history table.
+**REINFORCE** ranks attack options like Rookie, then
 **cascades** consolidation across the top **3** distinct attacker tiles (by weight): fill #1 to
 ``ATT_UNITS_CAP`` (**5**), keep those armies, then #2, then #3. ``_stored_attack`` is rank #1
 (deterministic). Only ATTACK combat selection differs.
@@ -23,8 +24,8 @@ hard cap of 3, **Mctsland has no fixed chain limit**. Post-conquest continuation
 :func:`~mcts_train.mcts_search.run_mcts_spree` (``EndAttack`` vs continue with the attack MCTS
 pick) with a 5-field **spree** history key; the old declining UCB1 percentage gate is removed.
 
-After each game, :meth:`notify_game_over` updates nested ``history["attack"]`` and
-``history["spree"]`` for logged keys (training).
+After each game, :meth:`notify_game_over` updates nested ``history["attack"]``,
+``history["spree"]``, and ``history["placement"]`` for logged keys (training).
 
 **State key** (per ``(src, dst)`` candidate)
 
@@ -58,8 +59,8 @@ above anchor).
 
 **History JSON**
 
-Nested ``{"attack": {key: {visits, wins}}, "spree": {...}}``. Legacy flat attack-only files load
-into ``attack`` with empty ``spree``.
+Nested ``{"attack": ..., "spree": ..., "placement": ...}``. Legacy flat attack-only files load
+into ``attack`` with empty ``spree`` / ``placement``.
 
 **Training vs inference**
 
@@ -91,6 +92,7 @@ from ..mcts_search import (
     DEFAULT_MCTS_ITERATIONS,
     RolloutKind,
     run_mcts_attack,
+    run_mcts_placement,
     run_mcts_spree,
 )
 from ..missions import (
@@ -103,7 +105,10 @@ from ..paths import data_dir, repo_root
 from ..simulator import (
     Action,
     Combat,
+    DeployPlace,
     EndAttack,
+    EndDeploy,
+    EndFortify,
     EndReinforce,
     MoveUnits,
     Simulator,
@@ -117,10 +122,16 @@ DEFAULT_WIN_RATE = 0.5
 UCB_C = math.sqrt(2.0)
 HISTORY_ATTACK = "attack"
 HISTORY_SPREE = "spree"
+HISTORY_PLACEMENT = "placement"
 
 HistoryTable = Dict[str, Dict[str, int]]
 HistoryBundle = Dict[str, HistoryTable]
-DEFAULT_HISTORY: HistoryBundle = {HISTORY_ATTACK: {}, HISTORY_SPREE: {}}
+DEFAULT_HISTORY: HistoryBundle = {
+    HISTORY_ATTACK: {},
+    HISTORY_SPREE: {},
+    HISTORY_PLACEMENT: {},
+}
+CONNECTIVITY_CAP = 5
 
 _MCTS_TRAIN_ROOT = Path(__file__).resolve().parents[1]
 _PY_ROOT = repo_root()
@@ -176,20 +187,29 @@ def _parse_history_table(raw: Any) -> HistoryTable:
 
 
 def _is_nested_history(raw: Dict[str, Any]) -> bool:
-    return HISTORY_ATTACK in raw or HISTORY_SPREE in raw
+    return (
+        HISTORY_ATTACK in raw
+        or HISTORY_SPREE in raw
+        or HISTORY_PLACEMENT in raw
+    )
+
+
+def _empty_history_bundle() -> HistoryBundle:
+    return {HISTORY_ATTACK: {}, HISTORY_SPREE: {}, HISTORY_PLACEMENT: {}}
 
 
 def normalize_history(history: HistoryBundle | HistoryTable | None) -> HistoryBundle:
-    """Ensure nested ``attack`` + ``spree`` tables; wrap legacy flat attack maps."""
+    """Ensure nested ``attack`` + ``spree`` + ``placement`` tables; wrap legacy flat attack maps."""
     if not history:
-        return {HISTORY_ATTACK: {}, HISTORY_SPREE: {}}
+        return _empty_history_bundle()
     if _is_nested_history(history):
         h = history  # type: ignore[assignment]
         return {
             HISTORY_ATTACK: dict(h.get(HISTORY_ATTACK, {})),
             HISTORY_SPREE: dict(h.get(HISTORY_SPREE, {})),
+            HISTORY_PLACEMENT: dict(h.get(HISTORY_PLACEMENT, {})),
         }
-    return {HISTORY_ATTACK: dict(history), HISTORY_SPREE: {}}
+    return {HISTORY_ATTACK: dict(history), HISTORY_SPREE: {}, HISTORY_PLACEMENT: {}}
 
 
 def load_history_from_json(path: Path | str, *, warn: bool = True) -> HistoryBundle:
@@ -207,12 +227,12 @@ def load_history_from_json(path: Path | str, *, warn: bool = True) -> HistoryBun
                 p,
                 f"(cwd={Path.cwd()!s}; try data/... at repo root)",
             )
-        return {HISTORY_ATTACK: {}, HISTORY_SPREE: {}}
+        return _empty_history_bundle()
     text = p.read_text(encoding="utf-8").strip()
     if not text:
         if warn:
             print("warning: mcts history file is empty — loaded 0 keys:", p)
-        return {HISTORY_ATTACK: {}, HISTORY_SPREE: {}}
+        return _empty_history_bundle()
     raw: Any = json.loads(text)
     if not isinstance(raw, dict):
         raise ValueError(f"history must be a JSON object, got {type(raw)}")
@@ -220,18 +240,26 @@ def load_history_from_json(path: Path | str, *, warn: bool = True) -> HistoryBun
         return {
             HISTORY_ATTACK: _parse_history_table(raw.get(HISTORY_ATTACK, {})),
             HISTORY_SPREE: _parse_history_table(raw.get(HISTORY_SPREE, {})),
+            HISTORY_PLACEMENT: _parse_history_table(raw.get(HISTORY_PLACEMENT, {})),
         }
-    return {HISTORY_ATTACK: _parse_history_table(raw), HISTORY_SPREE: {}}
+    return {
+        HISTORY_ATTACK: _parse_history_table(raw),
+        HISTORY_SPREE: {},
+        HISTORY_PLACEMENT: {},
+    }
 
 
 def save_history_to_json(path: Path | str, history: HistoryBundle) -> None:
-    """Write nested ``attack`` + ``spree`` history (sorted keys per section)."""
+    """Write nested ``attack`` + ``spree`` + ``placement`` history (sorted keys per section)."""
     h = normalize_history(history)
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         HISTORY_ATTACK: {k: h[HISTORY_ATTACK][k] for k in sorted(h[HISTORY_ATTACK])},
         HISTORY_SPREE: {k: h[HISTORY_SPREE][k] for k in sorted(h[HISTORY_SPREE])},
+        HISTORY_PLACEMENT: {
+            k: h[HISTORY_PLACEMENT][k] for k in sorted(h[HISTORY_PLACEMENT])
+        },
     }
     p.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
@@ -300,6 +328,22 @@ def str_to_spree_key(s: str) -> Tuple[int, int, int, int, int]:
     return tuple(int(p) for p in parts)  # type: ignore[return-value]
 
 
+def placement_key_to_str(key: Tuple[int, ...]) -> str:
+    """Canonical JSON/history key for a 7-tuple placement state."""
+    return "(" + ",".join(str(k) for k in key) + ")"
+
+
+def str_to_placement_key(s: str) -> Tuple[int, int, int, int, int, int, int]:
+    """Parse ``placement_key_to_str`` output."""
+    inner = s.strip()
+    if inner.startswith("(") and inner.endswith(")"):
+        inner = inner[1:-1]
+    parts = [p.strip() for p in inner.split(",")]
+    if len(parts) != 7:
+        raise ValueError(f"invalid placement key: {s!r}")
+    return tuple(int(p) for p in parts)  # type: ignore[return-value]
+
+
 def ucb_rank_bucket(score: float, anchor: float) -> int:
     """Discretize attack bandit score vs first-combat anchor: 0 / 1 / 2."""
     if anchor <= 0.0:
@@ -314,12 +358,12 @@ def ucb_rank_bucket(score: float, anchor: float) -> int:
 @dataclass
 class MctslandBotPlayer:
     """
-    One-seat bot: Rookie for REINFORCE / DEPLOY / FORTIFY; MCTS table for ATTACK combats.
+    One-seat bot: Rookie for REINFORCE; MCTS tables for ATTACK / spree / placement.
 
     Attributes:
         seat: Player index this bot controls.
         sim: Environment for legality and map queries.
-        history: Nested ``attack`` / ``spree`` ``key -> {visits, wins}`` tables for UCB lookup.
+        history: Nested ``attack`` / ``spree`` / ``placement`` ``key -> {visits, wins}`` tables.
         history_readonly: If true (inference), ``notify_game_over`` does not update ``history``.
         ucb_c: UCB exploration constant (bandit and MCTS selection).
         mcts_iterations: MCTS simulations per attack when > 0; ``0`` = legacy bandit only.
@@ -327,7 +371,7 @@ class MctslandBotPlayer:
         mcts_use_history_prior: If true, root-edge priors from ``history`` when expanding.
         mcts_depth: Max rollout ``apply`` steps per simulation (CLI ``--mcts-depth``).
         mcts_breadth: Max children expanded per tree node (CLI ``--mcts-breadth``).
-        _rookie: Rookie delegate for deploy/fortify and shared reinforce attack planning.
+        _rookie: Rookie delegate for shared reinforce attack planning.
         _episode_decisions: ``(table, key_str, seat)`` for each logged decision this game.
     """
 
@@ -346,6 +390,9 @@ class MctslandBotPlayer:
     _chain_anchor_ucb1: Optional[float] = field(default=None, init=False, repr=False)
     _consolidate_targets: List[Tuple[int, int]] = field(default_factory=list, init=False, repr=False)
     _consolidate_idx: int = field(default=0, init=False, repr=False)
+    _fortify_pending_clusters: Optional[List[Set[int]]] = field(default=None, init=False, repr=False)
+    _fortify_current_cluster: Optional[Set[int]] = field(default=None, init=False, repr=False)
+    _fortify_phase: str = field(default="strip", init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.mcts_rollout not in ("uniform", "rookie"):
@@ -393,6 +440,9 @@ class MctslandBotPlayer:
         self._chain_anchor_ucb1 = None
         self._consolidate_targets = []
         self._consolidate_idx = 0
+        self._fortify_pending_clusters = None
+        self._fortify_current_cluster = None
+        self._fortify_phase = "strip"
 
     def reset_for_new_game(self) -> None:
         """Clear per-game attack decision log (call at start of each match)."""
@@ -401,6 +451,9 @@ class MctslandBotPlayer:
         self._chain_anchor_ucb1 = None
         self._consolidate_targets = []
         self._consolidate_idx = 0
+        self._fortify_pending_clusters = None
+        self._fortify_current_cluster = None
+        self._fortify_phase = "strip"
 
     def choose_action(self, state: GameState, rng: np.random.Generator) -> Optional[Action]:
         """Same phase routing as :meth:`RookieBotPlayer.choose_action`; ATTACK uses table/MCTS."""
@@ -414,9 +467,9 @@ class MctslandBotPlayer:
         if state.phase == GamePhase.ATTACK:
             return self._attack(state, rng)
         if state.phase == GamePhase.DEPLOY:
-            return self._rookie._deploy(state, m, rng)
+            return self._deploy(state, m, rng)
         if state.phase == GamePhase.FORTIFY:
-            return self._rookie._fortify(state, m, rng)
+            return self._fortify(state, m, rng)
         return None
 
     def notify_game_over(self, winner_seat: Optional[int]) -> None:
@@ -589,6 +642,288 @@ class MctslandBotPlayer:
         )
         rank = ucb_rank_bucket(attack_score, anchor)
         return (is_mission, is_card, att_cont_bucket, def_land_bucket, rank)
+
+    def _max_enemy_neighbor_units(self, state: GameState, m: MapData, t: int) -> int:
+        """Max defender units on tiles adjacent to ``t``; ``0`` if no enemy neighbors."""
+        best = 0
+        for nb in m.neighbors(t):
+            o = int(state.owners[nb])
+            if o < 0 or o == self.seat:
+                continue
+            best = max(best, min(int(state.units[nb]), DEF_UNITS_CAP))
+        return best
+
+    def _placement_att_cont(self, state: GameState, m: MapData, t: int) -> int:
+        """``0`` if continent of ``t`` is fully owned; else bucket 1/2/3."""
+        missing = continent_missing_for_territory(m, state.owners, self.seat, t)
+        if missing <= 0:
+            return 0
+        return bucket_lands_to_conquer(missing)
+
+    def _connectivity_mission_count(
+        self, state: GameState, m: MapData, cluster: Set[int]
+    ) -> int:
+        """Mission-relevant tiles in ``cluster``, capped at ``CONNECTIVITY_CAP``."""
+        n = sum(
+            1
+            for t in cluster
+            if _mission_bucket_for_tile(m, state, self.seat, t) > 0
+        )
+        return min(n, CONNECTIVITY_CAP)
+
+    def _build_placement_key(
+        self, state: GameState, m: MapData, t: int
+    ) -> Tuple[int, int, int, int, int, int, int]:
+        """7-tuple placement key for destination owned tile ``t``."""
+        cluster = self._own_cluster_bfs(state, m, t)
+        att_units = min(int(state.units[t]), ATT_UNITS_CAP)
+        def_neighbor_max = min(self._max_enemy_neighbor_units(state, m, t), 4)
+        mission_bucket = _mission_bucket_for_tile(m, state, self.seat, t)
+        is_mission = 1 if mission_bucket > 0 else 0
+        is_card = 1 if self._hand_coin_kind_for_defender(state, t) > 0 else 0
+        att_cont = self._placement_att_cont(state, m, t)
+        connectivity_all = min(len(cluster), CONNECTIVITY_CAP)
+        connectivity_mission = self._connectivity_mission_count(state, m, cluster)
+        return (
+            att_units,
+            def_neighbor_max,
+            is_mission,
+            is_card,
+            att_cont,
+            connectivity_all,
+            connectivity_mission,
+        )
+
+    @staticmethod
+    def _placement_destination(action: Action) -> Optional[int]:
+        """Destination tile index for a placement root arm."""
+        if isinstance(action, DeployPlace):
+            return int(action.territory)
+        if isinstance(action, MoveUnits):
+            return int(action.dst)
+        return None
+
+    def _own_connected_components(self, state: GameState, m: MapData) -> List[Set[int]]:
+        """Connected components of owned tiles (undirected adjacency among own tiles)."""
+        owned = {t for t in range(m.T) if int(state.owners[t]) == self.seat}
+        seen: Set[int] = set()
+        out: List[Set[int]] = []
+        for start in sorted(owned):
+            if start in seen:
+                continue
+            cluster: Set[int] = set()
+            q: Deque[int] = deque([start])
+            while q:
+                t = q.popleft()
+                if t in seen:
+                    continue
+                if t not in owned:
+                    continue
+                seen.add(t)
+                cluster.add(t)
+                for nb in m.neighbors(t):
+                    if nb in owned and nb not in seen:
+                        q.append(nb)
+            out.append(cluster)
+        return out
+
+    def _history_prior_for_placement(
+        self, state: GameState, m: MapData, action: Action
+    ) -> Tuple[int, float]:
+        """``(prior_visits, prior_mean_z)`` for a placement root arm."""
+        dest = self._placement_destination(action)
+        if dest is None:
+            return 0, DEFAULT_WIN_RATE
+        key_str = placement_key_to_str(self._build_placement_key(state, m, dest))
+        visits, wins = self._lookup_stats(HISTORY_PLACEMENT, key_str)
+        if visits <= 0:
+            return 0, DEFAULT_WIN_RATE
+        return visits, float(wins) / float(visits)
+
+    def _placement_bandit_pick(
+        self, state: GameState, m: MapData, arms: List[Action], rng: np.random.Generator
+    ) -> Action:
+        """UCB1 pick among placement arms when ``mcts_iterations == 0``."""
+        scored: List[Tuple[float, Action, str]] = []
+        keys: List[str] = []
+        for a in arms:
+            dest = self._placement_destination(a)
+            if dest is None:
+                continue
+            key_str = placement_key_to_str(self._build_placement_key(state, m, dest))
+            keys.append(key_str)
+            scored.append((0.0, a, key_str))
+        if not scored:
+            return arms[0]
+        total_visits = sum(self._lookup_stats(HISTORY_PLACEMENT, k)[0] for k in keys)
+        for i, (_, a, key_str) in enumerate(scored):
+            scored[i] = (
+                self._score_key(HISTORY_PLACEMENT, key_str, total_visits),
+                a,
+                key_str,
+            )
+        scored.sort(key=lambda x: x[0], reverse=True)
+        best_score = scored[0][0]
+        top = [t for t in scored if t[0] >= best_score - 1e-9]
+        pick = top[int(rng.integers(0, len(top)))]
+        return pick[1]
+
+    def _placement_pick(
+        self,
+        state: GameState,
+        m: MapData,
+        arms: List[Action],
+        rng: np.random.Generator,
+    ) -> Action:
+        """MCTS or bandit pick among placement root arms."""
+        if not arms:
+            raise ValueError("placement_pick requires at least one arm")
+        chosen: Optional[Action] = None
+        if self.mcts_iterations > 0:
+            prior = (
+                (lambda a: self._history_prior_for_placement(state, m, a))
+                if self.mcts_use_history_prior
+                else None
+            )
+            chosen = run_mcts_placement(
+                self.sim,
+                state,
+                self.seat,
+                arms,
+                self.mcts_iterations,
+                rng,
+                ucb_c=self.ucb_c,
+                rollout_kind=self.mcts_rollout,
+                action_prior=prior,
+                mcts_depth=self.mcts_depth,
+                mcts_breadth=self.mcts_breadth,
+            )
+        if chosen is None or chosen not in self.sim.legal_actions(state):
+            chosen = self._placement_bandit_pick(state, m, arms, rng)
+        return chosen
+
+    def _log_placement_pick(
+        self, state: GameState, m: MapData, action: Action, key_str: str
+    ) -> None:
+        dest = self._placement_destination(action)
+        name = m.territory_names[dest] if dest is not None else "?"
+        self.sim._append_log(
+            state,
+            f"[PLACEMENT_PICK] seat={self.seat} key={key_str} dest={name}",
+        )
+
+    def _issue_placement(
+        self, state: GameState, m: MapData, action: Action, rng: np.random.Generator
+    ) -> Action:
+        """Log placement key and episode decision; return ``action``."""
+        dest = self._placement_destination(action)
+        if dest is None:
+            return action
+        key_str = placement_key_to_str(self._build_placement_key(state, m, dest))
+        self._log_placement_pick(state, m, action, key_str)
+        self._episode_decisions.append((HISTORY_PLACEMENT, key_str, self.seat))
+        return action
+
+    def _deploy(self, state: GameState, m: MapData, rng: np.random.Generator) -> Action:
+        """One pending army per call: MCTS over ``DeployPlace`` arms."""
+        if int(state.pending_deploy_armies[self.seat]) <= 0:
+            return EndDeploy()
+        legal = self.sim.legal_actions(state)
+        arms = [a for a in legal if isinstance(a, DeployPlace)]
+        if not arms:
+            return EndDeploy()
+        chosen = self._placement_pick(state, m, arms, rng)
+        return self._issue_placement(state, m, chosen, rng)
+
+    def _fortify_strip_move(
+        self, state: GameState, m: MapData, cluster: Set[int]
+    ) -> Optional[MoveUnits]:
+        """One imbalance-reducing +1 move within ``cluster`` (richest → poorest neighbor)."""
+        best: Optional[MoveUnits] = None
+        best_diff = 0
+        for src in sorted(cluster):
+            for dst in sorted(cluster):
+                if dst not in m.neighbors(src):
+                    continue
+                us = int(state.units[src])
+                ud = int(state.units[dst])
+                if us <= ud + 1:
+                    continue
+                diff = us - ud
+                if diff <= best_diff:
+                    continue
+                mv = MoveUnits(src, dst, 1)
+                if mv in self.sim.legal_actions(state):
+                    best_diff = diff
+                    best = mv
+        return best
+
+    def _fortify_redistribute_arms(
+        self, state: GameState, m: MapData, cluster: Set[int]
+    ) -> List[MoveUnits]:
+        """One representative ``MoveUnits`` arm per destination in ``cluster``."""
+        legal = set(self.sim.legal_actions(state))
+        arms: List[MoveUnits] = []
+        for dst in sorted(cluster):
+            best_src: Optional[int] = None
+            best_u = 0
+            for src in sorted(cluster):
+                if src == dst or dst not in m.neighbors(src):
+                    continue
+                u = int(state.units[src])
+                if u <= 1:
+                    continue
+                if u > best_u or (u == best_u and (best_src is None or src < best_src)):
+                    best_u = u
+                    best_src = src
+            if best_src is None:
+                continue
+            mv = MoveUnits(best_src, dst, 1)
+            if mv in legal:
+                arms.append(mv)
+        return arms
+
+    def _init_fortify_clusters(self, state: GameState, m: MapData) -> None:
+        """Build queue of multi-tile own components; skip isolated single tiles."""
+        clusters = [
+            c for c in self._own_connected_components(state, m) if len(c) >= 2
+        ]
+        self._fortify_pending_clusters = clusters
+        self._fortify_current_cluster = None
+        self._fortify_phase = "strip"
+
+    def _fortify(self, state: GameState, m: MapData, rng: np.random.Generator) -> Action:
+        """
+        Process own connected batches: strip to balance, then MCTS redistribution.
+
+        Isolated single-tile components are skipped. One action per ``choose_action`` call.
+        """
+        if self._fortify_pending_clusters is None:
+            self._init_fortify_clusters(state, m)
+
+        while True:
+            if self._fortify_current_cluster is None:
+                pending = self._fortify_pending_clusters
+                if not pending:
+                    return EndFortify()
+                self._fortify_current_cluster = pending.pop(0)
+                self._fortify_phase = "strip"
+
+            cluster = self._fortify_current_cluster
+            assert cluster is not None
+
+            if self._fortify_phase == "strip":
+                mv = self._fortify_strip_move(state, m, cluster)
+                if mv is not None:
+                    return mv
+                self._fortify_phase = "redistribute"
+
+            arms = self._fortify_redistribute_arms(state, m, cluster)
+            if arms:
+                chosen = self._placement_pick(state, m, arms, rng)
+                return self._issue_placement(state, m, chosen, rng)
+
+            self._fortify_current_cluster = None
 
     def _lookup_stats(self, table: str, key_str: str) -> Tuple[int, int]:
         row = self.history.get(table, {}).get(key_str)
