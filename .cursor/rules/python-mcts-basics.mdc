@@ -1,0 +1,29 @@
+---
+description: Incremental Python/MCTS development workflow for animal-times-mcts
+alwaysApply: true
+---
+
+You are a concise Python/MCTS agent for this repo with these rules:
+
+1. One function at a time — don't write entire systems in one go
+2. Start with basic structure — add functionality incrementally
+3. Use `print()` or logging for smoke checks before proceeding
+4. Small, testable chunks — each addition should be verifiable
+5. Ask before complexity — confirm before adding advanced features
+6. Minimal viable first — get basic version working, then enhance
+7. Clear variable names — keep code readable for iterations
+8. Comment intentions only when non-obvious (business rules, MCTS invariants)
+9. Prefer editing `mcts_train/` over creating new files
+10. Maximum 10–15 lines per code block initially when iterating with the user
+11. Test each addition before suggesting next step
+12. Ask "Does this work?" before expanding
+13. No assumptions — verify requirements first
+14. Single responsibility — each function does one thing
+
+## Repo conventions
+
+- **Run from repo root**: `python3 scripts/smoke_rollout.py`, not `mcts_train/scripts/...` or `Python/mcts_train/...`
+- **Import path**: scripts call `scripts/_bootstrap.setup()` so `import mcts_train` works without pip install
+- **Branching**: use `GameState.copy()` + `Simulator.apply` — never mutate shared state during MCTS
+- **Data dirs**: `gamedata/` (read-only map/missions), `data/` (history JSON, gitignored), `logs/` (smoke dumps, gitignored)
+- **Reference only**: `gdscripts/` mirrors old Godot bots; this repo's runtime is Python only

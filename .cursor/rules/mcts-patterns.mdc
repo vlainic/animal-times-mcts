@@ -1,0 +1,123 @@
+---
+alwaysApply: true
+---
+
+# Animal Times MCTS — Project Intelligence
+
+## User Preferences & Development Approach
+
+### Minimal Refactoring Philosophy
+- User strongly prefers **"minimum needed"** changes over over-engineering
+- When asked to refactor, focus on eliminating duplication with minimal structural changes
+- Avoid creating new files unless absolutely necessary
+- Redirect existing code to shared logic rather than complex architectural changes
+
+### Combat System (Milos Rules)
+- **Subtraction-based damage** over binary win/lose dice outcomes
+- **Defender counter-attacks** when attackers are completely eliminated
+- **"REROLL!!!"** for mutual destruction scenarios (recursive combat)
+- **Bidirectional conquest**: failed attacks can result in defender capturing attacker's territory
+- **Attack of Despair**: desperate mode when max units ≤ 1; anti-chain-attack logic prevents exploitation
+- **Damage capping** to prevent negative units; conquest at exactly 0 units
+
+### Subtraction Damage (Python sim)
+```python
+difference = attacker_die - defender_die
+if difference > 0:
+    capped = min(difference, max(0, remaining_units))
+    defender_losses += capped
+```
+
+### Mutual Destruction Reroll
+```python
+if attacker_final <= 0 and defender_final <= 0:
+    return resolve_combat_milos(...)  # recursive reroll
+```
+
+## Repo Layout
+
+```text
+animal-times-mcts/
+├── mcts_train/       # library: state, simulator, mcts_search, players, missions, features
+├── scripts/          # CLI entrypoints (run from repo root)
+├── gamedata/         # territory JSON + missions.json
+├── data/             # Mctsland history JSON (gitignored)
+├── logs/             # smoke / debug logs (gitignored)
+└── gdscripts/        # legacy Godot reference only — not runtime
+```
+
+See `docs/adaptation.md` for path migration notes.
+
+## Architecture Patterns
+
+### Single Source of Truth
+- **`GameState`** holds board, phases, missions, RNG streams, turn queue
+- **`Simulator`** is the only place that applies transitions (`apply`, combat, elimination)
+- **`MapData`** loads `gamedata/Territories/*.json`; **`missions.py`** loads `gamedata/missions.json`
+- Legal actions always come from the simulator — don't duplicate legality checks in bots or MCTS
+
+### RNG Streams
+- `GameState` has separate generators: `rng_cards`, `rng_dice`, `rng_policy`
+- `Simulator.new_game()` draws OS entropy via `numpy.random.SeedSequence().spawn(5)`
+- `GameState.copy()` / `deepcopy` preserves all generators for MCTS branches
+
+### Turn Phases
+REINFORCE → ATTACK → DEPLOY → FORTIFY → (next player) → GAME_OVER
+
+### Elimination
+- Eliminated seat removed from `player_queue`
+- If eliminated player was current → advance to next seat, REINFORCE phase
+- One seat left → `last_standing` win
+- Elimination rewards and mission retargeting via `missions.py`
+
+## MCTS & Training Patterns
+
+### Ephemeral MCTS (`mcts_search.run_mcts_attack`)
+- Fresh tree per ATTACK combat choice on `GameState.copy()`
+- Defaults: **100 iterations**, **depth 5** rollout applies, **breadth 5** children/node
+- Root edges = legal combats; deeper nodes expand `legal_actions` (breadth cap via UCB1 ranking)
+- Truncated rollouts → `_eval_truncated` heuristic (0.25 territory ratio + 0.25 mission progress, max 0.5)
+- Root-aligned backup: `z = 1` iff terminal `winner == root_seat`
+
+### MctslandBotPlayer
+- REINFORCE / DEPLOY / FORTIFY → Rookie delegate
+- ATTACK → `run_mcts_attack` when `mcts_iterations > 0`; else legacy UCB1 bandit on sparse JSON keys
+- Coarse attack key `(att_units, def_units, mission_bucket, coin_kind, ...)` for history/bandit — **not** MCTS node identity
+- Training: `notify_game_over` increments JSON visits/wins per logged attack key (whole-game win)
+- Inference: `from_history_file`, `history_readonly=True`
+
+### CLI Scripts (repo root)
+| Script | Purpose |
+|--------|---------|
+| `scripts/smoke_rollout.py` | Quick mixed-bot games (`--bots` pattern: `1`=Rookie, `2`=Mctsland, `4`=…) |
+| `scripts/mcts_selfplay.py` | Training runs → `data/mctsland_history_*.json` |
+| `scripts/mcts_calibrate.py` | Eval / calibration with same MCTS flags |
+| `scripts/mcts_search_smoke.py` | Legality / search smoke check |
+
+### Common CLI Flags
+`--mcts-iterations`, `--mcts-depth`, `--mcts-breadth`, `--mcts-rollout` (`uniform`|`rookie`),
+`--mcts-no-history-prior`, `--mcts-bandit-only`, `--mcts-history PATH`, `--workers`, `--matches`, `--save-every`
+
+### Path Helpers (`mcts_train/paths.py`)
+`repo_root()`, `data_dir()`, `logs_dir()`, `ensure_repo_on_sys_path()`
+
+## User Communication Patterns
+
+- User often says "I had that in prototype ;)" when recognizing familiar bugs
+- Appreciates when patterns from previous work are acknowledged
+- Values practical solutions over theoretical perfection
+- Tends to give incremental feedback ("now handle this part")
+- Prefers step-by-step implementation over large changes
+
+## Technical Debt & Debug
+
+- Refactor only when user explicitly requests with **ACT** mode
+- Maintain existing file structure when possible
+- Debug: section headers with `===` help organize logs; before/after state logging valuable
+- Re-run self-play after attack-state key schema changes; old JSON keys get padded on load but stats won't align
+
+## Known Limitations
+
+- JSON history backprop is **match win**, not per-combat outcome
+- Full games with default 100×MCTS per attack are slow — tune depth/breadth/iterations or use `--mcts-bandit-only` / `--workers`
+- `gdscripts/` may lag Python sim; treat `mcts_train/simulator.py` as authoritative for rules
