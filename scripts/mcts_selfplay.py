@@ -226,7 +226,8 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     m_depth = int(chunk_args["mcts_depth"])
     m_breadth = int(chunk_args["mcts_breadth"])
 
-    sim = Simulator(combat_one_round_only=True, log_events=False)
+    full_attack = bool(chunk_args["full_attack"])
+    sim = Simulator(combat_one_round_only=not full_attack, log_events=False)
     history = copy.deepcopy(initial_history)
     history_before = copy.deepcopy(history)
     seat_wins = [0] * n_bots
@@ -350,6 +351,20 @@ def main() -> None:
             f"Default: {DEFAULT_MCTS_BREADTH}."
         ),
     )
+    ap.add_argument(
+        "--full-attack",
+        action="store_true",
+        default=True,
+        help=(
+            "Use Simulator(combat_one_round_only=False) so clean overruns stay in ATTACK "
+            "and spree keys are logged (default: on)."
+        ),
+    )
+    ap.add_argument(
+        "--one-round-only",
+        action="store_true",
+        help="Opposite of --full-attack: one combat per ATTACK phase, then DEPLOY.",
+    )
     args = ap.parse_args()
     if args.matches < 1:
         ap.error("--matches must be >= 1")
@@ -358,6 +373,7 @@ def main() -> None:
     m_iters = 0 if args.mcts_bandit_only else max(0, int(args.mcts_iterations))
     m_depth = max(1, int(args.mcts_depth))
     m_breadth = max(1, int(args.mcts_breadth))
+    full_attack = bool(args.full_attack) and not bool(args.one_round_only)
 
     if args.history is None:
         stamp = datetime.now().strftime("%y%m%d%H%M%S")
@@ -377,7 +393,7 @@ def main() -> None:
     stuck_restarts = 0
 
     if workers == 1:
-        sim = Simulator(combat_one_round_only=True, log_events=False)
+        sim = Simulator(combat_one_round_only=not full_attack, log_events=False)
         save_every = int(args.save_every)
         while completed < target_matches:
             try:
@@ -444,6 +460,7 @@ def main() -> None:
                     "mcts_use_history_prior": not bool(args.mcts_no_history_prior),
                     "mcts_depth": m_depth,
                     "mcts_breadth": m_breadth,
+                    "full_attack": full_attack,
                 }
             )
 

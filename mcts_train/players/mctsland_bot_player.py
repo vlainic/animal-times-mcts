@@ -1300,25 +1300,17 @@ class MctslandBotPlayer:
                 )
             else:
                 continue_spree = self._spree_bandit_continue(spree_key_str)
-            if not continue_spree:
-                self._log_spree_pick(
-                    state,
-                    m,
-                    chosen,
-                    spree_key_str,
-                    attack_score=score,
-                    decision="stop",
-                )
-                return EndAttack()
             self._log_spree_pick(
                 state,
                 m,
                 chosen,
                 spree_key_str,
                 attack_score=score,
-                decision="continue",
+                decision="continue" if continue_spree else "stop",
             )
             self._episode_decisions.append((HISTORY_SPREE, spree_key_str, self.seat))
+            if not continue_spree:
+                return EndAttack()
 
         self._rookie._stored_attack = (chosen.attacker, chosen.defender)
         self._rookie._attacks_this_turn += 1
