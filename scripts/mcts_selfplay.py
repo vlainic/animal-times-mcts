@@ -47,11 +47,13 @@ from mcts_train.players.mctsland_bot_player import (
     HISTORY_SPREE,
     HistoryBundle,
     MctslandBotPlayer,
+    ensure_history_bundle,
     load_history_from_json,
     normalize_history,
     resolve_history_json_path,
     save_history_to_json,
 )
+from mcts_train.rollout_limits import MICRO_STEP_BASE, micro_step_cap
 from mcts_train.simulator import Simulator
 from mcts_train.paths import data_dir
 from mcts_train.state import GamePhase
@@ -88,7 +90,7 @@ def merge_history_tables(
     *deltas: HistoryBundle,
 ) -> HistoryBundle:
     """Sum ``visits`` and ``wins`` per key in all sections (mutates and returns ``base``)."""
-    base = normalize_history(base)
+    ensure_history_bundle(base)
     for table in (HISTORY_ATTACK, HISTORY_SPREE, HISTORY_PLACEMENT):
         tbl = base.setdefault(table, {})
         for delta in deltas:
@@ -151,6 +153,7 @@ def run_one_match(
     Raises ``MatchStuck`` if micro-steps stall (caller should restart the match).
     """
     names = _SMOKE_PLAYER_NAMES[:n_bots]
+    ensure_history_bundle(history)
     state = sim.new_game(n_bots, names, mission_pool="all")
     bots: List[MctslandBotPlayer] = [
         MctslandBotPlayer(
@@ -181,7 +184,9 @@ def run_one_match(
             bots[seat].reset_for_new_turn()
             prev_seat = seat
         acted = 0
-        while acted < 200:
+        turn_cap = MICRO_STEP_BASE
+        while acted < turn_cap:
+            turn_cap = max(turn_cap, micro_step_cap(bots[seat], state))
             a = bots[seat].choose_action(state, state.rng_policy)
             if a is None:
                 break
@@ -199,8 +204,10 @@ def run_one_match(
                 return w
             if state.current_player_seat() != seat:
                 break
-        if acted >= 200:
-            raise MatchStuck(f"stuck at step {step} phase {state.phase}")
+        if acted >= turn_cap:
+            raise MatchStuck(
+                f"stuck at step {step} phase {state.phase} acted={acted} cap={turn_cap}"
+            )
     for b in bots:
         b.notify_game_over(state.winner)
     return state.winner
@@ -442,7 +449,7 @@ def main() -> None:
 
         with Pool(processes=pool_size) as pool:
             for r in pool.imap_unordered(_run_selfplay_chunk, chunk_args_list):
-                merge_history_tables(history, r["history_delta"])
+                history = merge_history_tables(history, r["history_delta"])
                 for i, c in enumerate(r["seat_wins"]):
                     seat_wins[i] += int(c)
                 completed += int(r["completed"])

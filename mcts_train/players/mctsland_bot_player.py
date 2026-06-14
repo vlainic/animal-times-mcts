@@ -213,6 +213,27 @@ def normalize_history(history: HistoryBundle | HistoryTable | None) -> HistoryBu
     return {HISTORY_ATTACK: dict(history), HISTORY_SPREE: {}, HISTORY_PLACEMENT: {}}
 
 
+def ensure_history_bundle(history: HistoryBundle) -> None:
+    """
+    Ensure nested ``attack`` / ``spree`` / ``placement`` on ``history`` **in place**.
+
+    Training passes one shared dict to all bots; use this instead of ``normalize_history``
+    when ``history_readonly=False`` so ``notify_game_over`` updates the outer table.
+    """
+    if not isinstance(history, dict):
+        raise TypeError(f"history must be a dict, got {type(history)!r}")
+    if _is_nested_history(history):
+        history.setdefault(HISTORY_ATTACK, {})
+        history.setdefault(HISTORY_SPREE, {})
+        history.setdefault(HISTORY_PLACEMENT, {})
+        return
+    flat = dict(history)
+    history.clear()
+    history[HISTORY_ATTACK] = flat
+    history[HISTORY_SPREE] = {}
+    history[HISTORY_PLACEMENT] = {}
+
+
 def load_history_from_json(path: Path | str, *, warn: bool = True) -> HistoryBundle:
     """
     Load nested ``{attack, spree}`` history from JSON.
@@ -392,13 +413,20 @@ class MctslandBotPlayer:
     _consolidate_targets: List[Tuple[int, int]] = field(default_factory=list, init=False, repr=False)
     _consolidate_idx: int = field(default=0, init=False, repr=False)
     _fortify_pending_clusters: Optional[List[Set[int]]] = field(default=None, init=False, repr=False)
+    _fortify_clusters_total: int = field(default=0, init=False, repr=False)
     _fortify_current_cluster: Optional[Set[int]] = field(default=None, init=False, repr=False)
+    _fortify_hub: Optional[int] = field(default=None, init=False, repr=False)
+    _fortify_pool_total: int = field(default=0, init=False, repr=False)
+    _fortify_pool_remaining: int = field(default=0, init=False, repr=False)
     _fortify_phase: str = field(default="strip", init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.mcts_rollout not in ("uniform", "rookie"):
             raise ValueError(f"mcts_rollout must be 'uniform' or 'rookie', got {self.mcts_rollout!r}")
-        self.history = normalize_history(self.history)
+        if self.history_readonly:
+            self.history = normalize_history(self.history)
+        else:
+            ensure_history_bundle(self.history)
         self._rookie = RookieBotPlayer(self.seat, self.sim)
 
     @classmethod
@@ -442,7 +470,11 @@ class MctslandBotPlayer:
         self._consolidate_targets = []
         self._consolidate_idx = 0
         self._fortify_pending_clusters = None
+        self._fortify_clusters_total = 0
         self._fortify_current_cluster = None
+        self._fortify_hub = None
+        self._fortify_pool_total = 0
+        self._fortify_pool_remaining = 0
         self._fortify_phase = "strip"
 
     def reset_for_new_game(self) -> None:
@@ -453,7 +485,11 @@ class MctslandBotPlayer:
         self._consolidate_targets = []
         self._consolidate_idx = 0
         self._fortify_pending_clusters = None
+        self._fortify_clusters_total = 0
         self._fortify_current_cluster = None
+        self._fortify_hub = None
+        self._fortify_pool_total = 0
+        self._fortify_pool_remaining = 0
         self._fortify_phase = "strip"
 
     def choose_action(self, state: GameState, rng: np.random.Generator) -> Optional[Action]:
@@ -841,36 +877,88 @@ class MctslandBotPlayer:
         chosen = self._placement_pick(state, m, arms, rng)
         return self._issue_placement(state, m, chosen, rng)
 
-    def _fortify_strip_move(
-        self, state: GameState, m: MapData, cluster: Set[int]
-    ) -> Optional[MoveUnits]:
-        """One imbalance-reducing +1 move within ``cluster`` (richest → poorest neighbor)."""
-        best: Optional[MoveUnits] = None
-        best_diff = 0
-        for src in sorted(cluster):
-            for dst in sorted(cluster):
-                if dst not in m.neighbors(src):
-                    continue
-                us = int(state.units[src])
-                ud = int(state.units[dst])
-                if us <= ud + 1:
-                    continue
-                diff = us - ud
-                if diff <= best_diff:
-                    continue
-                mv = MoveUnits(src, dst, 1)
-                if mv in self.sim.legal_actions(state):
-                    best_diff = diff
-                    best = mv
-        return best
+    @staticmethod
+    def _fortify_pool_size(state: GameState, cluster: Set[int]) -> int:
+        """Units to redistribute after stripping each tile to minimum 1."""
+        return sum(max(0, int(state.units[t]) - 1) for t in cluster)
 
-    def _fortify_redistribute_arms(
-        self, state: GameState, m: MapData, cluster: Set[int]
+    @staticmethod
+    def _fortify_pick_hub(cluster: Set[int]) -> int:
+        return min(cluster)
+
+    def _fortify_dist_to_hub(
+        self, m: MapData, cluster: Set[int], hub: int
+    ) -> Dict[int, int]:
+        """BFS distances from ``hub`` within ``cluster``."""
+        dist: Dict[int, int] = {hub: 0}
+        q: Deque[int] = deque([hub])
+        while q:
+            t = q.popleft()
+            for nb in m.neighbors(t):
+                if nb in cluster and nb not in dist:
+                    dist[nb] = dist[t] + 1
+                    q.append(nb)
+        return dist
+
+    @staticmethod
+    def _fortify_next_hop(
+        m: MapData, cluster: Set[int], src: int, dist: Dict[int, int]
+    ) -> Optional[int]:
+        """One step from ``src`` toward ``hub`` (lower ``dist``)."""
+        src_d = dist.get(src)
+        if src_d is None or src_d <= 0:
+            return None
+        best_nb: Optional[int] = None
+        best_d = src_d
+        for nb in m.neighbors(src):
+            if nb not in cluster or nb not in dist:
+                continue
+            nb_d = dist[nb]
+            if nb_d >= best_d:
+                continue
+            if best_nb is None or nb_d < dist[best_nb] or (nb_d == dist[best_nb] and nb < best_nb):
+                best_nb = nb
+                best_d = nb_d
+        return best_nb
+
+    @staticmethod
+    def _fortify_strip_complete(
+        state: GameState, cluster: Set[int], hub: int
+    ) -> bool:
+        """True when every non-hub tile in ``cluster`` is at minimum 1."""
+        for t in cluster:
+            if t != hub and int(state.units[t]) > 1:
+                return False
+        return True
+
+    def _fortify_strip_move(
+        self, state: GameState, m: MapData, cluster: Set[int], hub: int
+    ) -> Optional[MoveUnits]:
+        """Move +1 from an excess non-hub tile toward ``hub`` along cluster edges."""
+        legal = set(self.sim.legal_actions(state))
+        dist = self._fortify_dist_to_hub(m, cluster, hub)
+        for src in sorted(cluster):
+            if src == hub or int(state.units[src]) <= 1:
+                continue
+            dst = self._fortify_next_hop(m, cluster, src, dist)
+            if dst is None:
+                continue
+            mv = MoveUnits(src, dst, 1)
+            if mv in legal:
+                return mv
+        return None
+
+    def _fortify_place_arms(
+        self, state: GameState, m: MapData, cluster: Set[int], hub: int
     ) -> List[MoveUnits]:
-        """One representative ``MoveUnits`` arm per destination in ``cluster``."""
+        """One representative ``MoveUnits`` arm per cluster destination tile."""
         legal = set(self.sim.legal_actions(state))
         arms: List[MoveUnits] = []
         for dst in sorted(cluster):
+            hub_mv = MoveUnits(hub, dst, 1)
+            if hub_mv in legal:
+                arms.append(hub_mv)
+                continue
             best_src: Optional[int] = None
             best_u = 0
             for src in sorted(cluster):
@@ -889,20 +977,50 @@ class MctslandBotPlayer:
                 arms.append(mv)
         return arms
 
+    def _log_fortify(self, state: GameState, msg: str) -> None:
+        self.sim._append_log(state, f"[FORTIFY] seat={self.seat} {msg}")
+
+    def _fortify_cluster_label(self) -> str:
+        pending = self._fortify_pending_clusters or []
+        total = self._fortify_clusters_total
+        if total <= 0:
+            return "cluster=?"
+        current = total - len(pending)
+        return f"cluster={current}/{total}"
+
+    def _fortify_cluster_tiles_snap(
+        self, state: GameState, m: MapData, cluster: Set[int]
+    ) -> str:
+        snap = {
+            m.territory_names[t]: int(state.units[t]) for t in sorted(cluster)
+        }
+        return json.dumps(snap, separators=(",", ":"))
+
     def _init_fortify_clusters(self, state: GameState, m: MapData) -> None:
         """Build queue of multi-tile own components; skip isolated single tiles."""
         clusters = [
             c for c in self._own_connected_components(state, m) if len(c) >= 2
         ]
         self._fortify_pending_clusters = clusters
+        self._fortify_clusters_total = len(clusters)
         self._fortify_current_cluster = None
+        self._fortify_hub = None
+        self._fortify_pool_total = 0
+        self._fortify_pool_remaining = 0
+        self._fortify_phase = "strip"
+
+    def _fortify_finish_cluster(self, state: GameState, clabel: str, msg: str) -> None:
+        self._log_fortify(state, f"{clabel} {msg}")
+        self._fortify_current_cluster = None
+        self._fortify_hub = None
+        self._fortify_pool_total = 0
+        self._fortify_pool_remaining = 0
         self._fortify_phase = "strip"
 
     def _fortify(self, state: GameState, m: MapData, rng: np.random.Generator) -> Action:
         """
-        Process own connected batches: strip to balance, then MCTS redistribution.
-
-        Isolated single-tile components are skipped. One action per ``choose_action`` call.
+        Per cluster: strip excess to min-1 on each tile (pool on hub), then ``pool`` placement
+        picks (one unit each) across cluster destinations. One action per ``choose_action`` call.
         """
         if self._fortify_pending_clusters is None:
             self._init_fortify_clusters(state, m)
@@ -911,25 +1029,76 @@ class MctslandBotPlayer:
             if self._fortify_current_cluster is None:
                 pending = self._fortify_pending_clusters
                 if not pending:
+                    self._log_fortify(
+                        state,
+                        f"EndFortify clusters_done={self._fortify_clusters_total}",
+                    )
                     return EndFortify()
-                self._fortify_current_cluster = pending.pop(0)
+                cluster = pending.pop(0)
+                self._fortify_current_cluster = cluster
+                hub = self._fortify_pick_hub(cluster)
+                self._fortify_hub = hub
+                pool_size = self._fortify_pool_size(state, cluster)
+                self._fortify_pool_total = pool_size
+                self._fortify_pool_remaining = 0
                 self._fortify_phase = "strip"
+                clabel = self._fortify_cluster_label()
+                tiles = self._fortify_cluster_tiles_snap(state, m, cluster)
+                if pool_size == 0:
+                    self._fortify_finish_cluster(state, clabel, f"start pool=0 skip tiles={tiles}")
+                    continue
+                hub_name = m.territory_names[hub]
+                self._log_fortify(
+                    state,
+                    f"{clabel} start pool={pool_size} hub={hub_name} tiles={tiles}",
+                )
 
             cluster = self._fortify_current_cluster
-            assert cluster is not None
+            hub = self._fortify_hub
+            assert cluster is not None and hub is not None
+            clabel = self._fortify_cluster_label()
 
             if self._fortify_phase == "strip":
-                mv = self._fortify_strip_move(state, m, cluster)
+                if self._fortify_strip_complete(state, cluster, hub):
+                    self._fortify_pool_remaining = self._fortify_pool_total
+                    self._fortify_phase = "place"
+                    self._log_fortify(
+                        state,
+                        f"{clabel} strip_done pool={self._fortify_pool_total} "
+                        f"hub_units={int(state.units[hub])}",
+                    )
+                    continue
+                mv = self._fortify_strip_move(state, m, cluster, hub)
                 if mv is not None:
+                    self._log_fortify(state, f"{clabel} phase=strip action={mv!r}")
                     return mv
-                self._fortify_phase = "redistribute"
+                self._fortify_finish_cluster(state, clabel, "strip_stuck skip")
+                continue
 
-            arms = self._fortify_redistribute_arms(state, m, cluster)
-            if arms:
-                chosen = self._placement_pick(state, m, arms, rng)
-                return self._issue_placement(state, m, chosen, rng)
+            if self._fortify_pool_remaining <= 0:
+                self._fortify_finish_cluster(state, clabel, "cluster_done")
+                continue
 
-            self._fortify_current_cluster = None
+            arms = self._fortify_place_arms(state, m, cluster, hub)
+            if not arms:
+                self._fortify_finish_cluster(
+                    state,
+                    clabel,
+                    f"place_stuck remaining={self._fortify_pool_remaining}",
+                )
+                continue
+
+            chosen = self._placement_pick(state, m, arms, rng)
+            self._fortify_pool_remaining -= 1
+            placed = self._fortify_pool_total - self._fortify_pool_remaining
+            dest = self._placement_destination(chosen)
+            dest_name = m.territory_names[dest] if dest is not None else "?"
+            self._log_fortify(
+                state,
+                f"{clabel} place {placed}/{self._fortify_pool_total} "
+                f"dst={dest_name} action={chosen!r}",
+            )
+            return self._issue_placement(state, m, chosen, rng)
 
     def _lookup_stats(self, table: str, key_str: str) -> Tuple[int, int]:
         row = self.history.get(table, {}).get(key_str)

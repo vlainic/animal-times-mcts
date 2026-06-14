@@ -14,7 +14,8 @@ Smoke test: ``N`` bot seats (default ``N=3``) play in-process.
 
 - Every chosen action is in ``Simulator.legal_actions(state)`` (no illegal moves).
 - The game either reaches ``GAME_OVER`` / ``winner`` or stops after ``max_steps`` outer
-  iterations without “infinite micro-step” (``acted`` cap per outer step).
+  iterations without “infinite micro-step” (``acted`` cap per outer step: ``max(200, 10*pool)``
+  during FORTIFY where ``pool`` is the active cluster strip/placement count; else **200**).
 
 **How to run**
 
@@ -30,10 +31,11 @@ From repo root::
 ``Simulator.new_game`` draws fresh entropy (board, missions, cards, dice, policy); no seed
 flags. Stochastic policies use ``state.rng_policy``.
 
-``--log`` enables ``Simulator(log_events=True)`` and prints the **last 40** lines of ``state.event_log``
-on exit (including when ``max_steps`` is hit). ``--log-file PATH`` writes the **full** log to ``PATH``
-(UTF-8 text); implies event logging even if ``--log`` is omitted. Parent directories are created as
-needed. If there are no log lines, no file is written.
+Event logging is **always on** for smoke. On **success**, ``--log`` prints the last 40 lines and/or
+``--log-file PATH`` writes the full ``event_log``. On **any failure** (stuck, illegal, max_steps),
+a dump is written to ``--log-file`` if set, else ``logs/smoke_fail_<stamp>.txt`` (use
+``--no-fail-dump`` to skip). Failure dumps include a header (reason, step, phase, recent actions)
+plus the full ``event_log``.
 
 ``_bootstrap.setup()`` prepends the repo root to ``sys.path`` so ``import mcts_train`` works
 when you run ``python3 scripts/smoke_rollout.py`` from the repo root.
@@ -53,9 +55,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Deque, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -69,7 +72,9 @@ from mcts_train.mcts_search import (
     DEFAULT_MCTS_ITERATIONS,
     RolloutKind,
 )
+from mcts_train.paths import failure_log_path
 from mcts_train.players.rookie_bot_player import RookieBotPlayer
+from mcts_train.rollout_limits import MICRO_STEP_BASE, micro_step_cap
 from mcts_train.simulator import Simulator
 from mcts_train.state import GamePhase
 
@@ -77,14 +82,62 @@ from mcts_train.state import GamePhase
 _SMOKE_PLAYER_NAMES = ("beaver", "koala", "llama", "meerkat", "panda", "pig")
 
 _BOT_TYPE_NAMES = {1: "rookie", 2: "mctsland"}
+_ACTION_RING = 10
 
 
-class MaxStepsTimeout(RuntimeError):
-    """Game did not finish within the outer-step cap."""
+class RolloutFailure(RuntimeError):
+    """Smoke/calibrate game ended abnormally with state preserved for logging."""
 
-    def __init__(self, message: str, *, state: Any = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason: str,
+        state: Any,
+        step: int,
+        phase: Any,
+        seat: int,
+        detail: str = "",
+        recent_actions: Optional[List[str]] = None,
+    ) -> None:
         super().__init__(message)
+        self.reason = reason
         self.state = state
+        self.step = step
+        self.phase = phase
+        self.seat = seat
+        self.detail = detail
+        self.recent_actions = list(recent_actions or [])
+
+
+class MaxStepsTimeout(RolloutFailure):
+    """Game did not finish within the outer-step cap (``mcts_calibrate`` compat)."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        state: Any = None,
+        step: int = -1,
+        phase: Any = 0,
+        seat: int = -1,
+        recent_actions: Optional[List[str]] = None,
+    ) -> None:
+        if state is not None:
+            if seat < 0:
+                seat = int(state.current_player_seat())
+            if phase == 0:
+                phase = state.phase
+        super().__init__(
+            message,
+            reason="max_steps",
+            state=state,
+            step=step,
+            phase=phase,
+            seat=seat,
+            detail=message,
+            recent_actions=recent_actions,
+        )
 
 
 @dataclass
@@ -141,6 +194,46 @@ def type_name(type_id: int) -> str:
 def default_max_steps(n_bots: int) -> int:
     """Outer iteration cap per match (same formula as ``mcts_selfplay``)."""
     return max(20_000, 10_000 * n_bots)
+
+
+def _phase_name(phase: Any) -> str:
+    try:
+        return f"{GamePhase(int(phase)).name}({int(phase)})"
+    except (ValueError, TypeError):
+        return str(phase)
+
+
+def _write_failure_dump(
+    state: Any,
+    path: Path,
+    *,
+    failure: RolloutFailure,
+    header_extra: Optional[List[str]] = None,
+) -> None:
+    """Write failure header + full ``state.event_log`` to ``path``."""
+    path = path.expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pname = state.player_names[failure.seat] if state is not None and 0 <= failure.seat < state.num_players else "?"
+    header: List[str] = [
+        "=== SMOKE FAIL ===",
+        f"reason: {failure.reason}",
+        f"message: {failure}",
+        (
+            f"step={failure.step} phase={_phase_name(failure.phase)} "
+            f"seat={failure.seat}({pname})"
+        ),
+    ]
+    if failure.detail:
+        header.append(f"detail: {failure.detail}")
+    if failure.recent_actions:
+        header.append("recent_actions:")
+        header.extend(f"  {ln}" for ln in failure.recent_actions)
+    if header_extra:
+        header.extend(header_extra)
+    header.append("---")
+    lines = list(state.event_log.entries) if state is not None else []
+    path.write_text("\n".join(header + lines) + "\n", encoding="utf-8")
+    print("wrote failure log to", path, f"({len(lines)} event lines)")
 
 
 def _write_event_log(
@@ -235,8 +328,7 @@ def run_one_rollout(
     """
     Play one full game; return winner seat and final state.
 
-    Raises ``MaxStepsTimeout`` if the outer-step cap is hit without terminal.
-    Raises ``RuntimeError`` on illegal action or stuck micro-steps.
+    Raises :class:`RolloutFailure` (or :class:`MaxStepsTimeout`) on stuck, illegal, or cap.
     """
     if len(seat_types) != n_bots:
         raise ValueError(f"seat_types length {len(seat_types)} != n_bots {n_bots}")
@@ -273,6 +365,37 @@ def run_one_rollout(
     stale_turns = 0
     stale_runs: List[Dict[str, Any]] = []
     _cur_run: Optional[Dict[str, Any]] = None
+    recent_actions: Deque[str] = deque(maxlen=_ACTION_RING)
+
+    def _record_action(step_i: int, seat_i: int, action: Any) -> None:
+        recent_actions.append(
+            f"step={step_i} seat={seat_i} phase={_phase_name(state.phase)} {action!r}"
+        )
+
+    def _raise_failure(
+        reason: str,
+        message: str,
+        step_i: int,
+        *,
+        detail: str = "",
+    ) -> None:
+        seat_i = int(state.current_player_seat())
+        sim._append_log(
+            state,
+            f"[SMOKE_FAIL] reason={reason} step={step_i} "
+            f"phase={_phase_name(state.phase)} seat={seat_i} "
+            f"detail={detail}",
+        )
+        raise RolloutFailure(
+            message,
+            reason=reason,
+            state=state,
+            step=step_i,
+            phase=state.phase,
+            seat=seat_i,
+            detail=detail,
+            recent_actions=list(recent_actions),
+        )
 
     def _tile_counts() -> Dict[str, int]:
         return {
@@ -342,7 +465,9 @@ def run_one_rollout(
             bots[seat].reset_for_new_turn()
             prev_seat = seat
         acted = 0
-        while acted < 200:
+        turn_cap = MICRO_STEP_BASE
+        while acted < turn_cap:
+            turn_cap = max(turn_cap, micro_step_cap(bots[seat], state))
             a = bots[seat].choose_action(state, state.rng_policy)
             if a is None:
                 break
@@ -358,10 +483,14 @@ def run_one_rollout(
                         "legal count",
                         len(legal),
                     )
-                raise RuntimeError(
-                    f"illegal action step={step} seat={seat} phase={state.phase} {a!r}"
+                _raise_failure(
+                    "illegal",
+                    f"illegal action step={step} seat={seat} phase={state.phase} {a!r}",
+                    step,
+                    detail=f"action={a!r} legal_count={len(legal)}",
                 )
             sim.apply(state, a)
+            _record_action(step, seat, a)
             acted += 1
             if state.phase == GamePhase.GAME_OVER:
                 _flush_stalemate_summary()
@@ -390,10 +519,22 @@ def run_one_rollout(
                     stale_turns = 0
                     owners_snap = state.owners.copy()
                 break
-        if acted >= 200:
+        if acted >= turn_cap:
             if verbose:
-                print("stuck many sub-steps at step", step, "phase", state.phase)
-            raise RuntimeError(f"stuck at step {step} phase {state.phase}")
+                print(
+                    "stuck many sub-steps at step",
+                    step,
+                    "phase",
+                    _phase_name(state.phase),
+                    "cap",
+                    turn_cap,
+                )
+            _raise_failure(
+                "stuck",
+                f"stuck at step {step} phase {state.phase}",
+                step,
+                detail=f"acted={acted} cap={turn_cap} stale_turns={stale_turns}",
+            )
     phase_name = GamePhase(state.phase).name
     msg = f"max_steps={max_steps} reached without terminal (phase={state.phase}), stale_turns={stale_turns}"
     if verbose:
@@ -403,7 +544,12 @@ def run_one_rollout(
         state,
         f"[SMOKE] max_steps={max_steps} reached without terminal phase={phase_name} stale_turns={stale_turns}",
     )
-    raise MaxStepsTimeout(msg, state=state)
+    raise MaxStepsTimeout(
+        msg,
+        state=state,
+        step=max_steps,
+        recent_actions=list(recent_actions),
+    )
 
 
 def main() -> None:
@@ -429,16 +575,21 @@ def main() -> None:
     ap.add_argument(
         "--log",
         action="store_true",
-        help="Print last 40 lines of state.event_log on exit (requires event logging).",
+        help="On success: print last 40 lines of state.event_log on exit.",
     )
     ap.add_argument(
         "--log-file",
         metavar="PATH",
         default=None,
         help=(
-            "Write full state.event_log to PATH (UTF-8), including on max_steps timeout. "
-            "Enables logging even without --log."
+            "On success: write full event_log to PATH. On failure: failure dump path "
+            "(default logs/smoke_fail_<stamp>.txt if omitted)."
         ),
+    )
+    ap.add_argument(
+        "--no-fail-dump",
+        action="store_true",
+        help="Do not auto-write logs/smoke_fail_<stamp>.txt on failure.",
     )
     ap.add_argument(
         "--mission-pool",
@@ -504,8 +655,7 @@ def main() -> None:
     except ValueError as e:
         ap.error(str(e))
 
-    want_log = args.log or args.log_file is not None
-    sim = Simulator(combat_one_round_only=bool(args.one_round_only), log_events=want_log)
+    sim = Simulator(combat_one_round_only=bool(args.one_round_only), log_events=True)
     mcts_history_readonly = False
     if args.mcts_history is not None:
         from mcts_train.players.mctsland_bot_player import (
@@ -537,8 +687,14 @@ def main() -> None:
     m_breadth = max(1, int(args.mcts_breadth))
 
     result: Optional[RolloutResult] = None
-    state_for_log: Any = None
+    failure: Optional[RolloutFailure] = None
     exit_code = 0
+    fail_header_extra = [
+        f"bots={args.bots} n_seats={n_bots} seat_types={''.join(str(t) for t in seat_types)}",
+        f"mcts_iterations={m_iters} mcts_depth={m_depth} mcts_breadth={m_breadth} "
+        f"mcts_rollout={args.mcts_rollout} bandit_only={bool(args.mcts_bandit_only)}",
+        f"mission_pool={args.mission_pool} one_round_only={bool(args.one_round_only)}",
+    ]
     try:
         result = run_one_rollout(
             sim,
@@ -554,16 +710,28 @@ def main() -> None:
             mcts_depth=m_depth,
             mcts_breadth=m_breadth,
         )
-    except MaxStepsTimeout as e:
+    except RolloutFailure as e:
         exit_code = 1
-        state_for_log = e.state
-    except RuntimeError:
-        raise SystemExit(1)
+        failure = e
+        print("SMOKE FAIL:", e)
 
-    state = result.state if result is not None else state_for_log
-    if state is not None:
-        log_file = Path(args.log_file) if args.log_file is not None else None
-        _write_event_log(state, log_terminal=bool(args.log), log_file=log_file)
+    if failure is not None and failure.state is not None and not args.no_fail_dump:
+        dump_path = (
+            Path(args.log_file).expanduser()
+            if args.log_file is not None
+            else failure_log_path()
+        )
+        _write_failure_dump(
+            failure.state,
+            dump_path,
+            failure=failure,
+            header_extra=fail_header_extra,
+        )
+    elif result is not None:
+        state = result.state
+        if args.log or args.log_file is not None:
+            log_file = Path(args.log_file) if args.log_file is not None else None
+            _write_event_log(state, log_terminal=bool(args.log), log_file=log_file)
 
     raise SystemExit(exit_code)
 

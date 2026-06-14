@@ -8,6 +8,7 @@ Import :class:`RookieBotPlayer` from ``mcts_train.players`` or
 from .mctsland_bot_player import (
     DEFAULT_HISTORY,
     MctslandBotPlayer,
+    ensure_history_bundle,
     load_history_from_json,
     normalize_history,
     save_history_to_json,
@@ -18,6 +19,7 @@ __all__ = [
     "DEFAULT_HISTORY",
     "MctslandBotPlayer",
     "RookieBotPlayer",
+    "ensure_history_bundle",
     "load_history_from_json",
     "normalize_history",
     "save_history_to_json",
