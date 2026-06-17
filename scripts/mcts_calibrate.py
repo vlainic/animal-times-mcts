@@ -32,12 +32,18 @@ restarts that match (does not count toward ``--matches``).
 
 ``--log`` / ``--log-file`` only capture the **last** match's event log (batch default is quiet).
 With ``--workers`` > 1, event logging is disabled (use ``--workers 1``).
+
+Checkpoints ``seat_wins`` and ``type_wins`` to ``data/mcts_calibration.json`` every
+``--progress-every`` matches (default path). Re-run the same command to resume; use
+``--fresh`` for a new experiment or ``--calibration PATH`` for a separate file.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+from datetime import datetime
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -63,7 +69,10 @@ from smoke_rollout import (
     run_one_rollout,
     type_name,
 )
+from mcts_train.paths import data_dir
 from mcts_train.simulator import Simulator
+
+_CALIBRATION_VERSION = 1
 
 
 def _init_type_wins(seat_types: tuple[int, ...]) -> Dict[str, int]:
@@ -105,19 +114,125 @@ def _init_calibrate_worker(init_args: Dict[str, Any]) -> None:
     }
 
 
-def _print_calibration_progress(
+def _calibration_config_snapshot(
+    *,
+    bots: str,
+    rotate_seats: bool,
+    mission_pool: str,
+    mcts_history: Optional[str],
+    mcts_iterations: int,
+    mcts_depth: int,
+    mcts_breadth: int,
+    mcts_rollout: str,
+    mcts_use_history_prior: bool,
+    full_attack: bool,
+) -> Dict[str, Any]:
+    return {
+        "bots": bots,
+        "rotate_seats": rotate_seats,
+        "mission_pool": mission_pool,
+        "mcts_history": mcts_history,
+        "mcts_iterations": mcts_iterations,
+        "mcts_depth": mcts_depth,
+        "mcts_breadth": mcts_breadth,
+        "mcts_rollout": mcts_rollout,
+        "mcts_use_history_prior": mcts_use_history_prior,
+        "full_attack": full_attack,
+    }
+
+
+def _configs_match(a: Dict[str, Any], b: Dict[str, Any]) -> bool:
+    return a == b
+
+
+def load_calibration(path: Path) -> Optional[Dict[str, Any]]:
+    if not path.is_file():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if int(data.get("version", 0)) != _CALIBRATION_VERSION:
+        raise ValueError(f"unsupported calibration version in {path}")
+    return data
+
+
+def _build_calibration_state(
+    *,
+    completed: int,
+    target_matches: int,
+    max_steps_restarts: int,
+    config_snapshot: Dict[str, Any],
+    seat_wins: List[int],
+    type_wins: Dict[str, int],
+) -> Dict[str, Any]:
+    return {
+        "version": _CALIBRATION_VERSION,
+        "updated_at": datetime.now().isoformat(timespec="seconds"),
+        "completed": completed,
+        "target_matches": target_matches,
+        "max_steps_restarts": max_steps_restarts,
+        "config": config_snapshot,
+        "seat_wins": {str(i): int(c) for i, c in enumerate(seat_wins)},
+        "type_wins": {k: int(v) for k, v in type_wins.items()},
+    }
+
+
+def save_calibration(path: Path, state: Dict[str, Any]) -> None:
+    path = path.expanduser().resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp.replace(path)
+
+
+def _restore_calibration_state(
+    loaded: Dict[str, Any],
+    n_bots: int,
+    base_seat_types: tuple[int, ...],
+) -> Tuple[List[int], Dict[str, int], int, int]:
+    seat_raw = loaded.get("seat_wins", {})
+    seat_wins = [int(seat_raw.get(str(i), 0)) for i in range(n_bots)]
+    type_wins = _init_type_wins(base_seat_types)
+    for key, count in loaded.get("type_wins", {}).items():
+        type_wins[str(key)] = int(count)
+    completed = int(loaded.get("completed", 0))
+    max_steps_restarts = int(loaded.get("max_steps_restarts", 0))
+    return seat_wins, type_wins, completed, max_steps_restarts
+
+
+def _last_saved_milestone(completed: int, progress_every: int) -> int:
+    if progress_every <= 0:
+        return 0
+    return (completed // progress_every) * progress_every
+
+
+def _merge_progress_and_save(
     completed: int,
     target_matches: int,
     *,
     progress_every: int,
     last_progress: int,
+    calibration_path: Path,
+    config_snapshot: Dict[str, Any],
+    seat_wins: List[int],
+    type_wins: Dict[str, int],
+    max_steps_restarts: int,
 ) -> int:
-    """Print ``progress K / target`` for each K milestone crossed since ``last_progress``."""
+    """Print and checkpoint for each progress milestone crossed since ``last_progress``."""
     if progress_every <= 0:
         return last_progress
     while last_progress + progress_every <= completed:
         last_progress += progress_every
         print("progress", last_progress, "/", target_matches)
+        save_calibration(
+            calibration_path,
+            _build_calibration_state(
+                completed=completed,
+                target_matches=target_matches,
+                max_steps_restarts=max_steps_restarts,
+                config_snapshot=config_snapshot,
+                seat_wins=seat_wins,
+                type_wins=type_wins,
+            ),
+        )
     return last_progress
 
 
@@ -253,12 +368,15 @@ def _run_calibration_serial(
     m_depth: int,
     m_breadth: int,
     progress_every: int,
-) -> Tuple[List[int], Dict[str, int], int, int, Optional[RolloutResult]]:
-    seat_wins = [0] * n_bots
-    type_wins = _init_type_wins(base_seat_types)
+    seat_wins: List[int],
+    type_wins: Dict[str, int],
+    completed: int,
+    max_steps_restarts: int,
+    calibration_path: Path,
+    config_snapshot: Dict[str, Any],
+    last_progress: int,
+) -> Tuple[List[int], Dict[str, int], int, int, Optional[RolloutResult], int]:
     last_result: Optional[RolloutResult] = None
-    completed = 0
-    max_steps_restarts = 0
 
     while completed < target_matches:
         offset = completed if rotate_seats else 0
@@ -295,10 +413,43 @@ def _run_calibration_serial(
             type_wins[key] = type_wins.get(key, 0) + 1
 
         completed += 1
-        if progress_every > 0 and completed % progress_every == 0:
-            print("match", completed, "/", target_matches, "winner", w)
+        last_progress = _merge_progress_and_save(
+            completed,
+            target_matches,
+            progress_every=progress_every,
+            last_progress=last_progress,
+            calibration_path=calibration_path,
+            config_snapshot=config_snapshot,
+            seat_wins=seat_wins,
+            type_wins=type_wins,
+            max_steps_restarts=max_steps_restarts,
+        )
 
-    return seat_wins, type_wins, completed, max_steps_restarts, last_result
+    return seat_wins, type_wins, completed, max_steps_restarts, last_result, last_progress
+
+
+def _print_calibration_summary(
+    *,
+    completed: int,
+    target_matches: int,
+    max_steps_restarts: int,
+    bots: str,
+    rotate_seats: bool,
+    workers: int,
+    seat_wins: List[int],
+    type_wins: Dict[str, int],
+    parallel: bool,
+) -> None:
+    print("--- done ---")
+    print("matches", completed, "/", target_matches)
+    if max_steps_restarts:
+        print("max_steps restarts:", max_steps_restarts)
+    print("bots", bots)
+    print("rotate-seats", rotate_seats)
+    if parallel:
+        print("workers", workers)
+    print("seat wins:", dict(enumerate(seat_wins)))
+    print("type wins:", dict(sorted(type_wins.items())))
 
 
 def main() -> None:
@@ -377,6 +528,18 @@ def main() -> None:
         default=1,
         metavar="N",
         help="Matches per parallel worker task (--workers > 1). Default: 1.",
+    )
+    ap.add_argument(
+        "--calibration",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="Checkpoint JSON (default: data/mcts_calibration.json).",
+    )
+    ap.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Ignore existing checkpoint and start from zero.",
     )
     ap.add_argument(
         "--rotate-seats",
@@ -499,9 +662,90 @@ def main() -> None:
     progress_every = int(args.progress_every)
     last_result: Optional[RolloutResult] = None
 
+    if args.calibration is None:
+        calibration_path = (data_dir() / "mcts_calibration.json").resolve()
+    else:
+        calibration_path = args.calibration.expanduser().resolve()
+    print("calibration file:", calibration_path)
+
+    config_snapshot = _calibration_config_snapshot(
+        bots=str(args.bots),
+        rotate_seats=bool(args.rotate_seats),
+        mission_pool=str(args.mission_pool),
+        mcts_history=hist_path_str,
+        mcts_iterations=m_iters,
+        mcts_depth=m_depth,
+        mcts_breadth=m_breadth,
+        mcts_rollout=str(args.mcts_rollout),
+        mcts_use_history_prior=m_prior,
+        full_attack=full_attack,
+    )
+
+    seat_wins = [0] * n_bots
+    type_wins = _init_type_wins(base_seat_types)
+    completed = 0
+    max_steps_restarts = 0
+    last_progress = 0
+
+    if not args.fresh and calibration_path.is_file():
+        try:
+            loaded = load_calibration(calibration_path)
+        except ValueError as e:
+            print("error:", e, file=sys.stderr)
+            raise SystemExit(1) from e
+        if loaded is not None:
+            stored = loaded.get("config", {})
+            if not _configs_match(stored, config_snapshot):
+                print(
+                    "error: checkpoint config mismatch — use --fresh to start over",
+                    file=sys.stderr,
+                )
+                print("checkpoint:", calibration_path, file=sys.stderr)
+                raise SystemExit(1)
+            seat_wins, type_wins, completed, max_steps_restarts = _restore_calibration_state(
+                loaded, n_bots, base_seat_types
+            )
+            last_progress = _last_saved_milestone(completed, progress_every)
+            if completed > 0:
+                print(
+                    "resuming completed",
+                    completed,
+                    "/",
+                    target_matches,
+                    "(",
+                    target_matches - completed,
+                    "remaining)",
+                )
+
+    remaining = target_matches - completed
+    if remaining <= 0:
+        save_calibration(
+            calibration_path,
+            _build_calibration_state(
+                completed=completed,
+                target_matches=target_matches,
+                max_steps_restarts=max_steps_restarts,
+                config_snapshot=config_snapshot,
+                seat_wins=seat_wins,
+                type_wins=type_wins,
+            ),
+        )
+        _print_calibration_summary(
+            completed=completed,
+            target_matches=target_matches,
+            max_steps_restarts=max_steps_restarts,
+            bots=str(args.bots),
+            rotate_seats=bool(args.rotate_seats),
+            workers=workers,
+            seat_wins=seat_wins,
+            type_wins=type_wins,
+            parallel=workers > 1,
+        )
+        return
+
     if workers == 1:
         sim = Simulator(combat_one_round_only=not full_attack, log_events=want_log)
-        seat_wins, type_wins, completed, max_steps_restarts, last_result = (
+        seat_wins, type_wins, completed, max_steps_restarts, last_result, last_progress = (
             _run_calibration_serial(
                 sim=sim,
                 n_bots=n_bots,
@@ -517,13 +761,20 @@ def main() -> None:
                 m_depth=m_depth,
                 m_breadth=m_breadth,
                 progress_every=progress_every,
+                seat_wins=seat_wins,
+                type_wins=type_wins,
+                completed=completed,
+                max_steps_restarts=max_steps_restarts,
+                calibration_path=calibration_path,
+                config_snapshot=config_snapshot,
+                last_progress=last_progress,
             )
         )
     else:
-        workers = min(workers, target_matches)
+        workers = min(workers, remaining)
         batch_size = max(1, int(args.batch_size))
-        n_tasks = -(-target_matches // batch_size)
-        task_chunks = _split_match_chunks(target_matches, n_tasks)
+        n_tasks = -(-remaining // batch_size)
+        task_chunks = _split_match_chunks(remaining, n_tasks)
         pool_size = min(workers, len(task_chunks))
         print(
             "workers",
@@ -534,6 +785,8 @@ def main() -> None:
             batch_size,
             "matches",
             target_matches,
+            "remaining",
+            remaining,
         )
 
         worker_init_args: Dict[str, Any] = {
@@ -553,7 +806,7 @@ def main() -> None:
         }
 
         chunk_args_list: List[Dict[str, Any]] = []
-        start_offset = 0
+        start_offset = completed
         for chunk_n in task_chunks:
             if chunk_n <= 0:
                 continue
@@ -564,12 +817,6 @@ def main() -> None:
                 }
             )
             start_offset += chunk_n
-
-        seat_wins = [0] * n_bots
-        type_wins = _init_type_wins(base_seat_types)
-        completed = 0
-        max_steps_restarts = 0
-        last_progress = 0
 
         with Pool(
             processes=pool_size,
@@ -583,11 +830,16 @@ def main() -> None:
                     type_wins[key] = type_wins.get(key, 0) + int(c)
                 completed += int(r["completed"])
                 max_steps_restarts += int(r["max_steps_restarts"])
-                last_progress = _print_calibration_progress(
+                last_progress = _merge_progress_and_save(
                     completed,
                     target_matches,
                     progress_every=progress_every,
                     last_progress=last_progress,
+                    calibration_path=calibration_path,
+                    config_snapshot=config_snapshot,
+                    seat_wins=seat_wins,
+                    type_wins=type_wins,
+                    max_steps_restarts=max_steps_restarts,
                 )
 
     log_file_path = Path(args.log_file) if args.log_file else None
@@ -598,16 +850,29 @@ def main() -> None:
             log_file=log_file_path,
         )
 
-    print("--- done ---")
-    print("matches", completed, "/", target_matches)
-    if max_steps_restarts:
-        print("max_steps restarts:", max_steps_restarts)
-    print("bots", args.bots)
-    print("rotate-seats", bool(args.rotate_seats))
-    if workers > 1:
-        print("workers", workers)
-    print("seat wins:", dict(enumerate(seat_wins)))
-    print("type wins:", dict(sorted(type_wins.items())))
+    save_calibration(
+        calibration_path,
+        _build_calibration_state(
+            completed=completed,
+            target_matches=target_matches,
+            max_steps_restarts=max_steps_restarts,
+            config_snapshot=config_snapshot,
+            seat_wins=seat_wins,
+            type_wins=type_wins,
+        ),
+    )
+
+    _print_calibration_summary(
+        completed=completed,
+        target_matches=target_matches,
+        max_steps_restarts=max_steps_restarts,
+        bots=str(args.bots),
+        rotate_seats=bool(args.rotate_seats),
+        workers=workers,
+        seat_wins=seat_wins,
+        type_wins=type_wins,
+        parallel=workers > 1,
+    )
 
 
 if __name__ == "__main__":

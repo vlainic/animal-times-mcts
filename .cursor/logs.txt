@@ -1,2 +1,0 @@
-$ python3 scripts/mcts_selfplay.py --mcts-iterations 20 --matches 1000 --workers 7 --mcts-depth 50 --mcts-breadth 2 --save-every 50
-python3: can't open file '/media/wlaki/W/GameDev/First_Projects/risk-like/animal-times-mcts/scripts/mcts_selfplay.py': [Errno 2] No such file or directory
