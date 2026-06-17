@@ -2648,8 +2648,8 @@ func sync_territory_units(territory_name: String, new_unit_count: int):
 - **Module** ``mcts_search.py``: defaults 100 iters / depth 5 / breadth 5. **``run_mcts_attack``** — root legal ``Combat`` arms. **``run_mcts_spree``** — post-conquest ``EndAttack`` vs continue with picked combat. **``run_mcts_placement``** — caller-supplied ``DeployPlace`` / ``MoveUnits`` arms (one pick per army). Truncated rollouts → ``_eval_truncated``. Coarse keys are **not** MCTS node IDs (priors + post-game table only).
 - **Bot** ``mctsland_bot_player.py``:
   - **REINFORCE**: Rookie top-3 cascade consolidate to 5 units per attacker tile.
-  - **DEPLOY / FORTIFY**: placement MCTS; fortify batches multi-tile own components (``len>=2``), strip then redistribute.
-  - **ATTACK**: attack MCTS; spree MCTS for chain (no declining-% gate).
-  - **History**: nested ``attack`` / ``spree`` / ``placement``; ``notify_game_over`` whole-game win backprop per logged key.
+  - **DEPLOY / FORTIFY**: placement MCTS + **session cache** (score all cluster/owned dests once; MCTS on first pick only; bandit thereafter; incremental key refresh on picked tile; rescore all only if ``total_visits`` shifts). Fortify: **strip-then-place** (hub pool, bounded place iterations).
+  - **ATTACK**: attack MCTS; spree MCTS for chain; both stop/continue logged. Needs ``combat_one_round_only=False``.
+  - **History**: nested ``attack`` / ``spree`` / ``placement``; ``ensure_history_bundle`` for training; worker merge in-place.
 - **Keys**: attack 7-tuple; spree 5-tuple; placement 7-tuple (``connectivity_all`` = other own tiles 0..5; ``connectivity_mission`` 0..4).
-- **Self-play** ``scripts/mcts_selfplay.py``: writes nested JSON to ``data/``; legacy flat → ``attack`` only.
+- **Self-play** ``scripts/mcts_selfplay.py``: writes nested JSON to ``data/``; default full-attack; worker history merge fix.
