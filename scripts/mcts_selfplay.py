@@ -17,8 +17,8 @@ If ``--history`` is omitted, the file name includes the **run start** stamp ``YY
 ``data/mctsland_history_<stamp>.json`` (repo root).
 
 ``--workers`` runs independent match chunks in parallel (``0`` = all CPUs); histories are
-merged by summing ``visits``/``wins`` per key at the end (``--save-every`` applies only with
-``--workers 1``).
+merged by summing ``visits``/``wins`` per key at the end. ``--batch-size`` sets matches per
+parallel task (default ``1``). ``--save-every`` applies only with ``--workers 1``.
 """
 
 from __future__ import annotations
@@ -135,6 +135,21 @@ def _split_match_chunks(total: int, n_workers: int) -> List[int]:
     return [base + (1 if i < rem else 0) for i in range(n_workers)]
 
 
+_SELFPLAY_WORKER: Dict[str, Any] = {}
+
+
+def _init_selfplay_worker(init_args: Dict[str, Any]) -> None:
+    """Create Simulator + baseline history snapshot once per worker process."""
+    global _SELFPLAY_WORKER
+    full_attack = bool(init_args["full_attack"])
+    initial_history: HistoryBundle = copy.deepcopy(init_args["initial_history"])
+    _SELFPLAY_WORKER = {
+        **init_args,
+        "sim": Simulator(combat_one_round_only=not full_attack, log_events=False),
+        "initial_history": initial_history,
+    }
+
+
 def run_one_match(
     sim: Simulator,
     n_bots: int,
@@ -215,20 +230,19 @@ def run_one_match(
 
 def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     """Worker: play ``chunk_matches`` games; return local history delta and win stats."""
-    n_bots = int(chunk_args["n_bots"])
+    w = _SELFPLAY_WORKER
+    n_bots = int(w["n_bots"])
     chunk_matches = int(chunk_args["chunk_matches"])
-    max_steps = int(chunk_args["max_steps"])
-    initial_history: HistoryBundle = copy.deepcopy(chunk_args["initial_history"])
+    max_steps = int(w["max_steps"])
 
-    m_iters = int(chunk_args["mcts_iterations"])
-    m_rollout = str(chunk_args["mcts_rollout"])
-    m_prior = bool(chunk_args["mcts_use_history_prior"])
-    m_depth = int(chunk_args["mcts_depth"])
-    m_breadth = int(chunk_args["mcts_breadth"])
+    m_iters = int(w["mcts_iterations"])
+    m_rollout = str(w["mcts_rollout"])
+    m_prior = bool(w["mcts_use_history_prior"])
+    m_depth = int(w["mcts_depth"])
+    m_breadth = int(w["mcts_breadth"])
 
-    full_attack = bool(chunk_args["full_attack"])
-    sim = Simulator(combat_one_round_only=not full_attack, log_events=False)
-    history = copy.deepcopy(initial_history)
+    sim: Simulator = w["sim"]
+    history = copy.deepcopy(w["initial_history"])
     history_before = copy.deepcopy(history)
     seat_wins = [0] * n_bots
     completed = 0
@@ -306,6 +320,14 @@ def main() -> None:
         help="Flush history JSON every K matches (--workers 1 only). Default: 10.",
     )
     ap.add_argument(
+        "--batch-size",
+        "-B",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Matches per parallel worker task (--workers > 1). Default: 1.",
+    )
+    ap.add_argument(
         "--mcts-iterations",
         type=int,
         default=DEFAULT_MCTS_ITERATIONS,
@@ -370,6 +392,8 @@ def main() -> None:
         ap.error("--matches must be >= 1")
     if args.save_every < 1:
         ap.error("--save-every must be >= 1")
+    if args.batch_size < 1:
+        ap.error("--batch-size must be >= 1")
     m_iters = 0 if args.mcts_bandit_only else max(0, int(args.mcts_iterations))
     m_depth = max(1, int(args.mcts_depth))
     m_breadth = max(1, int(args.mcts_breadth))
@@ -437,34 +461,45 @@ def main() -> None:
                 )
     else:
         workers = min(workers, target_matches)
-        save_every = int(args.save_every)
-        sub_chunk = max(1, save_every)
-        n_tasks = max(workers, -(-target_matches // sub_chunk))  # ceil division
+        batch_size = max(1, int(args.batch_size))
+        n_tasks = -(-target_matches // batch_size)
         task_chunks = _split_match_chunks(target_matches, n_tasks)
         pool_size = min(workers, len(task_chunks))
-        print("workers", pool_size, "tasks", len(task_chunks), "matches", target_matches)
+        print(
+            "workers",
+            pool_size,
+            "tasks",
+            len(task_chunks),
+            "batch",
+            batch_size,
+            "matches",
+            target_matches,
+        )
 
         initial_snapshot = copy.deepcopy(history)
+        worker_init_args: Dict[str, Any] = {
+            "n_bots": n_bots,
+            "max_steps": max_steps,
+            "initial_history": initial_snapshot,
+            "mcts_iterations": m_iters,
+            "mcts_rollout": str(args.mcts_rollout),
+            "mcts_use_history_prior": not bool(args.mcts_no_history_prior),
+            "mcts_depth": m_depth,
+            "mcts_breadth": m_breadth,
+            "full_attack": full_attack,
+        }
+
         chunk_args_list: List[Dict[str, Any]] = []
         for chunk_n in task_chunks:
             if chunk_n <= 0:
                 continue
-            chunk_args_list.append(
-                {
-                    "n_bots": n_bots,
-                    "chunk_matches": chunk_n,
-                    "max_steps": max_steps,
-                    "initial_history": initial_snapshot,
-                    "mcts_iterations": m_iters,
-                    "mcts_rollout": str(args.mcts_rollout),
-                    "mcts_use_history_prior": not bool(args.mcts_no_history_prior),
-                    "mcts_depth": m_depth,
-                    "mcts_breadth": m_breadth,
-                    "full_attack": full_attack,
-                }
-            )
+            chunk_args_list.append({"chunk_matches": chunk_n})
 
-        with Pool(processes=pool_size) as pool:
+        with Pool(
+            processes=pool_size,
+            initializer=_init_selfplay_worker,
+            initargs=(worker_init_args,),
+        ) as pool:
             for r in pool.imap_unordered(_run_selfplay_chunk, chunk_args_list):
                 history = merge_history_tables(history, r["history_delta"])
                 for i, c in enumerate(r["seat_wins"]):

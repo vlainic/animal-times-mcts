@@ -75,9 +75,10 @@ Called by `MctslandBotPlayer` at ATTACK when `mcts_iterations > 0`.
 
 `--workers W` (0 = all CPUs) in `mcts_selfplay.py` and `mcts_calibrate.py`:
 
-- `multiprocessing.Pool` + `imap_unordered`
-- Selfplay: `--save-every` controls sub-chunk size; history merged after each sub-task
-- Calibrate: `--progress-every` for streaming progress prints
+- `multiprocessing.Pool` + `imap_unordered`; pool initializer loads Simulator/history once per worker
+- `--batch-size N` (default 1): matches per parallel task — decoupled from progress/save cadence
+- Selfplay: `--save-every` flushes JSON in serial mode only; parallel mode saves after each returned task
+- Calibrate: `--progress-every K` prints every K completed matches (not per task)
 
 ## Performance Tips
 

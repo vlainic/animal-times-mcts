@@ -21,6 +21,8 @@ history is read-only (no training writes).
 not stay fixed on seat 0.
 
 ``--workers`` runs independent match chunks in parallel (``0`` = all CPUs, default ``1``).
+``--batch-size`` sets matches per parallel task (default ``1``). ``--progress-every`` is
+reporting only (print every K completed matches).
 
 Each match uses ``mission_pool="all"`` (conquest + elimination + special), same as
 ``mcts_selfplay.py``.
@@ -84,6 +86,41 @@ def _split_match_chunks(total: int, n_workers: int) -> List[int]:
     return [base + (1 if i < rem else 0) for i in range(n_workers)]
 
 
+_CALIBRATE_WORKER: Dict[str, Any] = {}
+
+
+def _init_calibrate_worker(init_args: Dict[str, Any]) -> None:
+    """Load Simulator + inference history once per worker process."""
+    global _CALIBRATE_WORKER
+    full_attack = bool(init_args["full_attack"])
+    want_log = bool(init_args["want_log"])
+    hist_path_str = init_args.get("mcts_history_path")
+    mcts_history = {}
+    if hist_path_str:
+        mcts_history = load_mcts_history_for_inference(Path(hist_path_str))
+    _CALIBRATE_WORKER = {
+        **init_args,
+        "sim": Simulator(combat_one_round_only=not full_attack, log_events=want_log),
+        "mcts_history": mcts_history,
+    }
+
+
+def _print_calibration_progress(
+    completed: int,
+    target_matches: int,
+    *,
+    progress_every: int,
+    last_progress: int,
+) -> int:
+    """Print ``progress K / target`` for each K milestone crossed since ``last_progress``."""
+    if progress_every <= 0:
+        return last_progress
+    while last_progress + progress_every <= completed:
+        last_progress += progress_every
+        print("progress", last_progress, "/", target_matches)
+    return last_progress
+
+
 def _dump_last_match_logs(
     result: Optional[RolloutResult],
     *,
@@ -110,28 +147,24 @@ def _dump_last_match_logs(
 
 def _run_calibration_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     """Worker: play ``chunk_matches`` games; return local win stats."""
-    n_bots = int(chunk_args["n_bots"])
-    base_seat_types: Tuple[int, ...] = tuple(chunk_args["base_seat_types"])
+    w = _CALIBRATE_WORKER
+    n_bots = int(w["n_bots"])
+    base_seat_types: Tuple[int, ...] = tuple(w["base_seat_types"])
     chunk_matches = int(chunk_args["chunk_matches"])
     start_offset = int(chunk_args["start_offset"])
-    rotate_seats = bool(chunk_args["rotate_seats"])
-    max_steps = int(chunk_args["max_steps"])
-    mission_pool = str(chunk_args["mission_pool"])
-    want_log = bool(chunk_args["want_log"])
+    rotate_seats = bool(w["rotate_seats"])
+    max_steps = int(w["max_steps"])
+    mission_pool = str(w["mission_pool"])
+    want_log = bool(w["want_log"])
 
-    m_iters = int(chunk_args["mcts_iterations"])
-    m_prior = bool(chunk_args["mcts_use_history_prior"])
-    m_rollout: RolloutKind = chunk_args["mcts_rollout"]
-    m_depth = int(chunk_args["mcts_depth"])
-    m_breadth = int(chunk_args["mcts_breadth"])
-    full_attack = bool(chunk_args["full_attack"])
+    m_iters = int(w["mcts_iterations"])
+    m_prior = bool(w["mcts_use_history_prior"])
+    m_rollout: RolloutKind = w["mcts_rollout"]
+    m_depth = int(w["mcts_depth"])
+    m_breadth = int(w["mcts_breadth"])
 
-    mcts_history = {}
-    hist_path_str = chunk_args.get("mcts_history_path")
-    if hist_path_str:
-        mcts_history = load_mcts_history_for_inference(Path(hist_path_str))
-
-    sim = Simulator(combat_one_round_only=not full_attack, log_events=want_log)
+    sim: Simulator = w["sim"]
+    mcts_history = w["mcts_history"]
     seat_wins = [0] * n_bots
     type_wins = _init_type_wins(base_seat_types)
     completed = 0
@@ -338,6 +371,14 @@ def main() -> None:
         help="Print progress every K matches (0 = silent until summary). Default: 10.",
     )
     ap.add_argument(
+        "--batch-size",
+        "-B",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Matches per parallel worker task (--workers > 1). Default: 1.",
+    )
+    ap.add_argument(
         "--rotate-seats",
         action="store_true",
         help="Cyclic left-rotate --bots pattern each match (fairer seat assignment).",
@@ -394,6 +435,8 @@ def main() -> None:
         ap.error("--matches must be >= 1")
     if args.progress_every < 0:
         ap.error("--progress-every must be >= 0")
+    if args.batch_size < 1:
+        ap.error("--batch-size must be >= 1")
 
     m_iters = 0 if args.mcts_bandit_only else max(0, int(args.mcts_iterations))
     m_prior = not bool(args.mcts_no_history_prior)
@@ -478,11 +521,36 @@ def main() -> None:
         )
     else:
         workers = min(workers, target_matches)
-        sub_chunk = max(1, progress_every) if progress_every > 0 else max(1, target_matches // workers)
-        n_tasks = max(workers, -(-target_matches // sub_chunk))
+        batch_size = max(1, int(args.batch_size))
+        n_tasks = -(-target_matches // batch_size)
         task_chunks = _split_match_chunks(target_matches, n_tasks)
         pool_size = min(workers, len(task_chunks))
-        print("workers", pool_size, "tasks", len(task_chunks), "matches", target_matches)
+        print(
+            "workers",
+            pool_size,
+            "tasks",
+            len(task_chunks),
+            "batch",
+            batch_size,
+            "matches",
+            target_matches,
+        )
+
+        worker_init_args: Dict[str, Any] = {
+            "n_bots": n_bots,
+            "base_seat_types": base_seat_types,
+            "rotate_seats": bool(args.rotate_seats),
+            "max_steps": max_steps,
+            "mission_pool": str(args.mission_pool),
+            "want_log": False,
+            "mcts_iterations": m_iters,
+            "mcts_use_history_prior": m_prior,
+            "mcts_rollout": m_rollout,
+            "mcts_depth": m_depth,
+            "mcts_breadth": m_breadth,
+            "full_attack": full_attack,
+            "mcts_history_path": hist_path_str,
+        }
 
         chunk_args_list: List[Dict[str, Any]] = []
         start_offset = 0
@@ -491,21 +559,8 @@ def main() -> None:
                 continue
             chunk_args_list.append(
                 {
-                    "n_bots": n_bots,
-                    "base_seat_types": base_seat_types,
                     "chunk_matches": chunk_n,
                     "start_offset": start_offset,
-                    "rotate_seats": bool(args.rotate_seats),
-                    "max_steps": max_steps,
-                    "mission_pool": str(args.mission_pool),
-                    "want_log": False,
-                    "mcts_iterations": m_iters,
-                    "mcts_use_history_prior": m_prior,
-                    "mcts_rollout": m_rollout,
-                    "mcts_depth": m_depth,
-                    "mcts_breadth": m_breadth,
-                    "full_attack": full_attack,
-                    "mcts_history_path": hist_path_str,
                 }
             )
             start_offset += chunk_n
@@ -514,8 +569,13 @@ def main() -> None:
         type_wins = _init_type_wins(base_seat_types)
         completed = 0
         max_steps_restarts = 0
+        last_progress = 0
 
-        with Pool(processes=pool_size) as pool:
+        with Pool(
+            processes=pool_size,
+            initializer=_init_calibrate_worker,
+            initargs=(worker_init_args,),
+        ) as pool:
             for r in pool.imap_unordered(_run_calibration_chunk, chunk_args_list):
                 for i, c in enumerate(r["seat_wins"]):
                     seat_wins[i] += int(c)
@@ -523,7 +583,12 @@ def main() -> None:
                     type_wins[key] = type_wins.get(key, 0) + int(c)
                 completed += int(r["completed"])
                 max_steps_restarts += int(r["max_steps_restarts"])
-                print("progress", completed, "/", target_matches)
+                last_progress = _print_calibration_progress(
+                    completed,
+                    target_matches,
+                    progress_every=progress_every,
+                    last_progress=last_progress,
+                )
 
     log_file_path = Path(args.log_file) if args.log_file else None
     if want_log and last_result is not None:
