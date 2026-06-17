@@ -77,7 +77,7 @@ Called by `MctslandBotPlayer` at ATTACK when `mcts_iterations > 0`.
 
 - `multiprocessing.Pool` + `imap_unordered`; pool initializer loads Simulator/history once per worker
 - `--batch-size N` (default 1): matches per parallel task — decoupled from progress/save cadence
-- Selfplay: `--save-every` flushes JSON in serial mode only; parallel mode saves after each returned task
+- Selfplay: `--save-every K` flushes JSON every K completed matches (parallel and serial)
 - Calibrate: `--progress-every K` prints and checkpoints every K completed matches to `data/mcts_calibration.json` (resume on re-run; `--fresh` to reset)
 
 ## Performance Tips

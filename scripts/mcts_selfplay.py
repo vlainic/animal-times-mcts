@@ -18,7 +18,8 @@ If ``--history`` is omitted, the file name includes the **run start** stamp ``YY
 
 ``--workers`` runs independent match chunks in parallel (``0`` = all CPUs); histories are
 merged by summing ``visits``/``wins`` per key at the end. ``--batch-size`` sets matches per
-parallel task (default ``1``). ``--save-every`` applies only with ``--workers 1``.
+parallel task (default ``1``). ``--save-every K`` flushes JSON every K completed matches
+(serial and parallel).
 """
 
 from __future__ import annotations
@@ -148,6 +149,35 @@ def _init_selfplay_worker(init_args: Dict[str, Any]) -> None:
         "sim": Simulator(combat_one_round_only=not full_attack, log_events=False),
         "initial_history": initial_history,
     }
+
+
+def _merge_selfplay_save_progress(
+    completed: int,
+    target_matches: int,
+    *,
+    save_every: int,
+    last_saved: int,
+    history_path: Path,
+    history: HistoryBundle,
+) -> int:
+    """Flush history and print for each save milestone crossed since ``last_saved``."""
+    while last_saved + save_every <= completed:
+        last_saved += save_every
+        save_history(history_path, history)
+        atk_n, spree_n, place_n = _history_key_counts(history)
+        print(
+            "saved",
+            last_saved,
+            "/",
+            target_matches,
+            "attack",
+            atk_n,
+            "spree",
+            spree_n,
+            "placement",
+            place_n,
+        )
+    return last_saved
 
 
 def run_one_match(
@@ -317,7 +347,7 @@ def main() -> None:
         type=int,
         default=10,
         metavar="K",
-        help="Flush history JSON every K matches (--workers 1 only). Default: 10.",
+        help="Flush history JSON every K completed matches. Default: 10.",
     )
     ap.add_argument(
         "--batch-size",
@@ -415,10 +445,11 @@ def main() -> None:
     seat_wins = [0] * n_bots
     completed = 0
     stuck_restarts = 0
+    save_every = int(args.save_every)
+    last_saved = 0
 
     if workers == 1:
         sim = Simulator(combat_one_round_only=not full_attack, log_events=False)
-        save_every = int(args.save_every)
         while completed < target_matches:
             try:
                 w = run_one_match(
@@ -442,23 +473,14 @@ def main() -> None:
             completed += 1
             if w is not None and 0 <= w < n_bots:
                 seat_wins[w] += 1
-            if completed % save_every == 0:
-                save_history(history_path, history)
-                atk_n, spree_n, place_n = _history_key_counts(history)
-                print(
-                    "match",
-                    completed,
-                    "/",
-                    target_matches,
-                    "attack",
-                    atk_n,
-                    "spree",
-                    spree_n,
-                    "placement",
-                    place_n,
-                    "winner",
-                    w,
-                )
+            last_saved = _merge_selfplay_save_progress(
+                completed,
+                target_matches,
+                save_every=save_every,
+                last_saved=last_saved,
+                history_path=history_path,
+                history=history,
+            )
     else:
         workers = min(workers, target_matches)
         batch_size = max(1, int(args.batch_size))
@@ -506,19 +528,13 @@ def main() -> None:
                     seat_wins[i] += int(c)
                 completed += int(r["completed"])
                 stuck_restarts += int(r["stuck_restarts"])
-                save_history(history_path, history)
-                atk_n, spree_n, place_n = _history_key_counts(history)
-                print(
-                    "saved",
+                last_saved = _merge_selfplay_save_progress(
                     completed,
-                    "/",
                     target_matches,
-                    "attack",
-                    atk_n,
-                    "spree",
-                    spree_n,
-                    "placement",
-                    place_n,
+                    save_every=save_every,
+                    last_saved=last_saved,
+                    history_path=history_path,
+                    history=history,
                 )
 
     save_history(history_path, history)
