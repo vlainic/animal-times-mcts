@@ -30,8 +30,8 @@
     - **Training**: ``notify_game_over`` increments ``visits``/``wins`` per logged key per table (whole-game win). Shared ``history`` dict via ``ensure_history_bundle`` (in-place normalize; no deepcopy per bot).
     - **Inference**: ``from_history_file``, ``history_readonly=True``.
   - **Self-play** `mcts_selfplay.py`: same MCTS CLI flags; default **``--full-attack``** (``combat_one_round_only=False``) so spree keys populate; ``--one-round-only`` to opt out. Worker merge: ``ensure_history_bundle(base)`` in ``merge_history_tables`` + ``history = merge_history_tables(...)`` (fixes empty JSON in multi-worker runs). ``mission_pool="all"``; ``data/mctsland_history_<stamp>.json``; ``--history``, ``--save-every``.
-  - **Rollout limits** (`mcts_train/rollout_limits.py`): dynamic micro-step cap ``max(200, 10 * fortify_pool)`` for smoke/selfplay (avoids false ``MatchStuck`` on large fortify pools).
-  - **Smoke** (`scripts/smoke_rollout.py`): ``RolloutFailure`` + timestamped dumps to ``logs/`` on stuck/illegal; event log always on by default.
+  - **Rollout limits** (`mcts_train/rollout_limits.py`): dynamic micro-step cap ``max(200, 10 * fortify_pool)``; when exceeded, ``random_legal_action`` fallback (smoke/selfplay) instead of stuck failure.
+  - **Smoke** (`scripts/smoke_rollout.py`): ``RolloutFailure`` on illegal + timestamped dumps; micro-step cap → random legal fallback (``[ROLLOUT_FALLBACK]`` in event log).
   - **Simulator elimination fix**: ``apply_player_elimination`` → ``_remove_player_from_turn_queue`` (Godot parity): eliminated seat removed from ``player_queue``; if they were current → next seat, **REINFORCE** (no DEPLOY with 0 tiles). One seat left → ``last_standing`` win. Rookie ``_deploy`` + DEPLOY ``legal_actions`` guard for empty ownership.
   - **``.gitignore`**: ``logs/``, ``data/``, ``__pycache__/``, ``*.py[cod]``; bytecode removed from git index (was tracked before ignore).
   - **Logs folder**: `Python/mcts_train/logs/` for user-generated smoke dumps.

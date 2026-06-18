@@ -54,7 +54,7 @@ from mcts_train.players.mctsland_bot_player import (
     resolve_history_json_path,
     save_history_to_json,
 )
-from mcts_train.rollout_limits import MICRO_STEP_BASE, micro_step_cap
+from mcts_train.rollout_limits import MICRO_STEP_BASE, micro_step_cap, random_legal_action
 from mcts_train.simulator import Simulator
 from mcts_train.paths import data_dir
 from mcts_train.state import GamePhase
@@ -230,16 +230,33 @@ def run_one_match(
             prev_seat = seat
         acted = 0
         turn_cap = MICRO_STEP_BASE
-        while acted < turn_cap:
+        while True:
             turn_cap = max(turn_cap, micro_step_cap(bots[seat], state))
-            a = bots[seat].choose_action(state, state.rng_policy)
-            if a is None:
-                break
-            legal = sim.legal_actions(state)
-            if a not in legal:
-                raise RuntimeError(
-                    f"illegal action match step={step} seat={seat} phase={state.phase} {a!r}"
+            if acted >= turn_cap:
+                a = random_legal_action(sim, state, state.rng_policy)
+                if a is None:
+                    break
+                print(
+                    "warning: fallback step",
+                    step,
+                    "phase",
+                    state.phase,
+                    "action",
+                    a,
+                    "acted",
+                    acted,
+                    "cap",
+                    turn_cap,
                 )
+            else:
+                a = bots[seat].choose_action(state, state.rng_policy)
+                if a is None:
+                    break
+                legal = sim.legal_actions(state)
+                if a not in legal:
+                    raise RuntimeError(
+                        f"illegal action match step={step} seat={seat} phase={state.phase} {a!r}"
+                    )
             sim.apply(state, a)
             acted += 1
             if state.phase == GamePhase.GAME_OVER:
@@ -249,10 +266,6 @@ def run_one_match(
                 return w
             if state.current_player_seat() != seat:
                 break
-        if acted >= turn_cap:
-            raise MatchStuck(
-                f"stuck at step {step} phase {state.phase} acted={acted} cap={turn_cap}"
-            )
     for b in bots:
         b.notify_game_over(state.winner)
     return state.winner

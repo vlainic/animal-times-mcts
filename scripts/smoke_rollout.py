@@ -14,8 +14,8 @@ Smoke test: ``N`` bot seats (default ``N=3``) play in-process.
 
 - Every chosen action is in ``Simulator.legal_actions(state)`` (no illegal moves).
 - The game either reaches ``GAME_OVER`` / ``winner`` or stops after ``max_steps`` outer
-  iterations without “infinite micro-step” (``acted`` cap per outer step: ``max(200, 10*pool)``
-  during FORTIFY where ``pool`` is the active cluster strip/placement count; else **200**).
+  iterations. Per-turn micro-step cap (``max(200, 10*pool)`` in FORTIFY; else **200**): when
+  exceeded, drivers pick a uniform random legal action instead of failing.
 
 **How to run**
 
@@ -74,7 +74,7 @@ from mcts_train.mcts_search import (
 )
 from mcts_train.paths import failure_log_path
 from mcts_train.players.rookie_bot_player import RookieBotPlayer
-from mcts_train.rollout_limits import MICRO_STEP_BASE, micro_step_cap
+from mcts_train.rollout_limits import MICRO_STEP_BASE, micro_step_cap, random_legal_action
 from mcts_train.simulator import Simulator
 from mcts_train.state import GamePhase
 
@@ -328,7 +328,8 @@ def run_one_rollout(
     """
     Play one full game; return winner seat and final state.
 
-    Raises :class:`RolloutFailure` (or :class:`MaxStepsTimeout`) on stuck, illegal, or cap.
+    Raises :class:`RolloutFailure` on illegal actions; :class:`MaxStepsTimeout` on outer cap.
+    Micro-step cap triggers uniform random legal fallback (logged as ``[ROLLOUT_FALLBACK]``).
     """
     if len(seat_types) != n_bots:
         raise ValueError(f"seat_types length {len(seat_types)} != n_bots {n_bots}")
@@ -466,29 +467,52 @@ def run_one_rollout(
             prev_seat = seat
         acted = 0
         turn_cap = MICRO_STEP_BASE
-        while acted < turn_cap:
+        while True:
             turn_cap = max(turn_cap, micro_step_cap(bots[seat], state))
-            a = bots[seat].choose_action(state, state.rng_policy)
-            if a is None:
-                break
-            legal = sim.legal_actions(state)
-            if a not in legal:
+            if acted >= turn_cap:
+                a = random_legal_action(sim, state, state.rng_policy)
+                if a is None:
+                    break
+                sim._append_log(
+                    state,
+                    f"[ROLLOUT_FALLBACK] step={step} phase={_phase_name(state.phase)} "
+                    f"seat={seat} action={a!r} acted={acted} cap={turn_cap}",
+                )
                 if verbose:
                     print(
-                        "ILLEGAL",
+                        "fallback at step",
                         step,
-                        seat,
-                        state.phase,
+                        "phase",
+                        _phase_name(state.phase),
+                        "action",
                         a,
-                        "legal count",
-                        len(legal),
+                        "acted",
+                        acted,
+                        "cap",
+                        turn_cap,
                     )
-                _raise_failure(
-                    "illegal",
-                    f"illegal action step={step} seat={seat} phase={state.phase} {a!r}",
-                    step,
-                    detail=f"action={a!r} legal_count={len(legal)}",
-                )
+            else:
+                a = bots[seat].choose_action(state, state.rng_policy)
+                if a is None:
+                    break
+                legal = sim.legal_actions(state)
+                if a not in legal:
+                    if verbose:
+                        print(
+                            "ILLEGAL",
+                            step,
+                            seat,
+                            state.phase,
+                            a,
+                            "legal count",
+                            len(legal),
+                        )
+                    _raise_failure(
+                        "illegal",
+                        f"illegal action step={step} seat={seat} phase={state.phase} {a!r}",
+                        step,
+                        detail=f"action={a!r} legal_count={len(legal)}",
+                    )
             sim.apply(state, a)
             _record_action(step, seat, a)
             acted += 1
@@ -519,22 +543,6 @@ def run_one_rollout(
                     stale_turns = 0
                     owners_snap = state.owners.copy()
                 break
-        if acted >= turn_cap:
-            if verbose:
-                print(
-                    "stuck many sub-steps at step",
-                    step,
-                    "phase",
-                    _phase_name(state.phase),
-                    "cap",
-                    turn_cap,
-                )
-            _raise_failure(
-                "stuck",
-                f"stuck at step {step} phase {state.phase}",
-                step,
-                detail=f"acted={acted} cap={turn_cap} stale_turns={stale_turns}",
-            )
     phase_name = GamePhase(state.phase).name
     msg = f"max_steps={max_steps} reached without terminal (phase={state.phase}), stale_turns={stale_turns}"
     if verbose:

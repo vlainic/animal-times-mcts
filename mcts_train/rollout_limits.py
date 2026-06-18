@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
+
+import numpy as np
 
 from .state import GamePhase
 
@@ -26,8 +28,16 @@ def fortify_pool_for_cap(bot: Any, state: Any) -> int:
 
 
 def micro_step_cap(bot: Any, state: Any, *, base: int = MICRO_STEP_BASE) -> int:
-    """Per-turn micro-step limit before rollout drivers treat the seat as stuck."""
+    """Per-turn micro-step limit before rollout drivers apply random legal fallback."""
     pool = fortify_pool_for_cap(bot, state)
     if pool <= 0:
         return base
     return max(base, 10 * pool)
+
+
+def random_legal_action(sim: Any, state: Any, rng: np.random.Generator) -> Optional[Any]:
+    """Uniform random pick from ``sim.legal_actions(state)``; ``None`` if empty."""
+    legal = sim.legal_actions(state)
+    if not legal:
+        return None
+    return legal[int(rng.integers(0, len(legal)))]
