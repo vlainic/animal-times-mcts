@@ -44,7 +44,8 @@ from mcts_train.mcts_search import (
 )
 from mcts_train.players.mctsland_bot_player import (
     HISTORY_ATTACK,
-    HISTORY_PLACEMENT,
+    HISTORY_DEPLOY,
+    HISTORY_FORTIFY,
     HISTORY_SPREE,
     HistoryBundle,
     MctslandBotPlayer,
@@ -73,16 +74,17 @@ def load_history(path: Path) -> HistoryBundle:
 
 
 def save_history(path: Path, history: HistoryBundle) -> None:
-    """Write nested attack + spree + placement history JSON."""
+    """Write nested attack + spree + deploy + fortify history JSON."""
     save_history_to_json(path, history)
 
 
-def _history_key_counts(history: HistoryBundle) -> tuple[int, int, int]:
+def _history_key_counts(history: HistoryBundle) -> tuple[int, int, int, int]:
     h = normalize_history(history)
     return (
         len(h[HISTORY_ATTACK]),
         len(h[HISTORY_SPREE]),
-        len(h[HISTORY_PLACEMENT]),
+        len(h[HISTORY_DEPLOY]),
+        len(h[HISTORY_FORTIFY]),
     )
 
 
@@ -92,7 +94,7 @@ def merge_history_tables(
 ) -> HistoryBundle:
     """Sum ``visits`` and ``wins`` per key in all sections (mutates and returns ``base``)."""
     ensure_history_bundle(base)
-    for table in (HISTORY_ATTACK, HISTORY_SPREE, HISTORY_PLACEMENT):
+    for table in (HISTORY_ATTACK, HISTORY_SPREE, HISTORY_DEPLOY, HISTORY_FORTIFY):
         tbl = base.setdefault(table, {})
         for delta in deltas:
             for key, row in normalize_history(delta).get(table, {}).items():
@@ -110,11 +112,12 @@ def _history_delta(
     delta: HistoryBundle = {
         HISTORY_ATTACK: {},
         HISTORY_SPREE: {},
-        HISTORY_PLACEMENT: {},
+        HISTORY_DEPLOY: {},
+        HISTORY_FORTIFY: {},
     }
     before_n = normalize_history(before)
     after_n = normalize_history(after)
-    for table in (HISTORY_ATTACK, HISTORY_SPREE, HISTORY_PLACEMENT):
+    for table in (HISTORY_ATTACK, HISTORY_SPREE, HISTORY_DEPLOY, HISTORY_FORTIFY):
         for key, row in after_n.get(table, {}).items():
             prev = before_n.get(table, {}).get(key, {"visits": 0, "wins": 0})
             dv = int(row.get("visits", 0)) - int(prev.get("visits", 0))
@@ -164,7 +167,7 @@ def _merge_selfplay_save_progress(
     while last_saved + save_every <= completed:
         last_saved += save_every
         save_history(history_path, history)
-        atk_n, spree_n, place_n = _history_key_counts(history)
+        atk_n, spree_n, deploy_n, fortify_n = _history_key_counts(history)
         print(
             "saved",
             last_saved,
@@ -174,8 +177,10 @@ def _merge_selfplay_save_progress(
             atk_n,
             "spree",
             spree_n,
-            "placement",
-            place_n,
+            "deploy",
+            deploy_n,
+            "fortify",
+            fortify_n,
         )
     return last_saved
 
@@ -469,7 +474,7 @@ def main() -> None:
     else:
         history_path = resolve_history_json_path(args.history)
     history = load_history(history_path)
-    initial_attack, initial_spree, initial_placement = _history_key_counts(history)
+    initial_attack, initial_spree, initial_deploy, initial_fortify = _history_key_counts(history)
     print("history file:", history_path)
 
     workers = _resolve_workers(int(args.workers))
@@ -582,7 +587,7 @@ def main() -> None:
         print("stuck restarts:", stuck_restarts)
     if workers > 1:
         print("workers", workers)
-    atk_n, spree_n, place_n = _history_key_counts(history)
+    atk_n, spree_n, deploy_n, fortify_n = _history_key_counts(history)
     print(
         "attack keys:",
         atk_n,
@@ -592,10 +597,14 @@ def main() -> None:
         spree_n,
         "(+",
         spree_n - initial_spree,
-        "new) placement keys:",
-        place_n,
+        "new) deploy keys:",
+        deploy_n,
         "(+",
-        place_n - initial_placement,
+        deploy_n - initial_deploy,
+        "new) fortify keys:",
+        fortify_n,
+        "(+",
+        fortify_n - initial_fortify,
         "new)",
     )
     print("seat wins:", dict(enumerate(seat_wins)))

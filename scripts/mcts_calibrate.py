@@ -645,7 +645,8 @@ def main() -> None:
     if args.mcts_history is not None:
         from mcts_train.players.mctsland_bot_player import (
             HISTORY_ATTACK,
-            HISTORY_PLACEMENT,
+            HISTORY_DEPLOY,
+            HISTORY_FORTIFY,
             HISTORY_SPREE,
             normalize_history,
         )
@@ -661,13 +662,16 @@ def main() -> None:
             len(h[HISTORY_ATTACK]),
             "spree",
             len(h[HISTORY_SPREE]),
-            "placement",
-            len(h[HISTORY_PLACEMENT]),
+            "deploy",
+            len(h[HISTORY_DEPLOY]),
+            "fortify",
+            len(h[HISTORY_FORTIFY]),
         )
         if (
             len(h[HISTORY_ATTACK]) == 0
             and len(h[HISTORY_SPREE]) == 0
-            and len(h[HISTORY_PLACEMENT]) == 0
+            and len(h[HISTORY_DEPLOY]) == 0
+            and len(h[HISTORY_FORTIFY]) == 0
         ):
             print(
                 "warning: history has 0 keys — Mctsland runs without JSON priors "

@@ -99,17 +99,19 @@ new 7-field keys.
 
 =============================================================================
 
-**Nested history JSON (attack + spree + placement)**
+**Nested history JSON (attack + spree + deploy + fortify)**
 
 ```json
 {
   "attack": { "(3,2,2,0,1,2,4)": { "visits": 10, "wins": 3 } },
   "spree": { "(1,0,1,2,1)": { "visits": 5, "wins": 2 } },
-  "placement": { "(2,1,1,0,1,3,2)": { "visits": 8, "wins": 2 } }
+  "deploy": { "(2,1,1,0,1,3,2)": { "visits": 8, "wins": 2 } },
+  "fortify": { "(1,0,2,4,1)": { "visits": 6, "wins": 1 } }
 }
 ```
 
-Legacy flat attack-only files load into ``attack`` with empty ``spree`` / ``placement``.
+Legacy flat attack-only files load into ``attack`` with empty ``spree`` / ``deploy`` / ``fortify``.
+Legacy ``placement`` section is ignored on load.
 Old archives: ``data/attack_only/``.
 
 **Spree state key** (post-conquest continue, 5-tuple)
@@ -118,9 +120,13 @@ Old archives: ``data/attack_only/``.
 chooses Continue. ``ucb_rank``: attack bandit score vs 1st-combat anchor (0 = &lt;50%, 1 = mid, 2 = ≥ anchor).
 Replaces declining-% chain gate.
 
-**Placement state key** (DEPLOY / FORTIFY redistribute, 7-tuple)
+**Deploy state key** (7-tuple)
 
 ``(att_units, def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)``
+
+**Fortify state key** (6-tuple, post-strip — no ``att_units``)
+
+``(def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)``
 
 - ``connectivity_all``: **other** own tiles in same component (0..5); alone tile → 0
 - ``connectivity_mission``: mission-relevant tiles in cluster (0..4)
