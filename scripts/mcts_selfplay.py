@@ -191,6 +191,8 @@ def run_one_match(
     mcts_use_history_prior: bool,
     mcts_depth: int,
     mcts_breadth: int,
+    placement_distribute: str = "linear",
+    placement_softmax_temp: float = 1.0,
 ) -> Optional[int]:
     """
     Play one game; backprop attack stats on all bots. Returns winner seat.
@@ -211,6 +213,8 @@ def run_one_match(
             mcts_use_history_prior=mcts_use_history_prior,
             mcts_depth=mcts_depth,
             mcts_breadth=mcts_breadth,
+            placement_distribute=placement_distribute,
+            placement_softmax_temp=placement_softmax_temp,
         )
         for s in range(n_bots)
     ]
@@ -283,6 +287,8 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     m_prior = bool(w["mcts_use_history_prior"])
     m_depth = int(w["mcts_depth"])
     m_breadth = int(w["mcts_breadth"])
+    placement_distribute = str(w.get("placement_distribute", "linear"))
+    placement_softmax_temp = float(w.get("placement_softmax_temp", 1.0))
 
     sim: Simulator = w["sim"]
     history = copy.deepcopy(w["initial_history"])
@@ -303,6 +309,8 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
                 mcts_use_history_prior=m_prior,
                 mcts_depth=m_depth,
                 mcts_breadth=m_breadth,
+                placement_distribute=placement_distribute,
+                placement_softmax_temp=placement_softmax_temp,
             )
         except MatchStuck:
             stuck_restarts += 1
@@ -417,6 +425,19 @@ def main() -> None:
         ),
     )
     ap.add_argument(
+        "--placement-distribute",
+        choices=("linear", "softmax"),
+        default="linear",
+        help="One-shot DEPLOY/FORTIFY allocation weights. Default: linear.",
+    )
+    ap.add_argument(
+        "--placement-softmax-temp",
+        type=float,
+        default=1.0,
+        metavar="T",
+        help="Softmax temperature when --placement-distribute=softmax. Default: 1.0.",
+    )
+    ap.add_argument(
         "--full-attack",
         action="store_true",
         default=True,
@@ -475,6 +496,8 @@ def main() -> None:
                     mcts_use_history_prior=not bool(args.mcts_no_history_prior),
                     mcts_depth=m_depth,
                     mcts_breadth=m_breadth,
+                    placement_distribute=str(args.placement_distribute),
+                    placement_softmax_temp=float(args.placement_softmax_temp),
                 )
             except MatchStuck as e:
                 stuck_restarts += 1
@@ -522,6 +545,8 @@ def main() -> None:
             "mcts_depth": m_depth,
             "mcts_breadth": m_breadth,
             "full_attack": full_attack,
+            "placement_distribute": str(args.placement_distribute),
+            "placement_softmax_temp": float(args.placement_softmax_temp),
         }
 
         chunk_args_list: List[Dict[str, Any]] = []

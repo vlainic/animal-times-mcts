@@ -12,19 +12,20 @@ MICRO_STEP_BASE = 200
 
 
 def fortify_pool_for_cap(bot: Any, state: Any) -> int:
-    """Active Mctsland fortify pool size (0 if not in FORTIFY or unknown)."""
+    """Estimated fortify pool across multi-tile clusters (for micro-step cap)."""
     if state.phase != GamePhase.FORTIFY:
         return 0
-    pool = int(getattr(bot, "_fortify_pool_total", 0) or 0)
-    if pool > 0:
-        return pool
-    cluster = getattr(bot, "_fortify_current_cluster", None)
-    if cluster is None:
+    pool_fn = getattr(bot, "_fortify_pool_size", None)
+    comp_fn = getattr(bot, "_own_connected_components", None)
+    sim = getattr(bot, "sim", None)
+    if pool_fn is None or comp_fn is None or sim is None:
         return 0
-    fn = getattr(bot, "_fortify_pool_size", None)
-    if fn is None:
-        return 0
-    return int(fn(state, cluster))
+    m = sim.m
+    total = 0
+    for cluster in comp_fn(state, m):
+        if len(cluster) >= 2:
+            total += int(pool_fn(state, cluster))
+    return total
 
 
 def micro_step_cap(bot: Any, state: Any, *, base: int = MICRO_STEP_BASE) -> int:

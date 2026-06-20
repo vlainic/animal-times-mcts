@@ -81,7 +81,7 @@ REINFORCE → ATTACK → DEPLOY → FORTIFY → (next player) → GAME_OVER
 
 ### MctslandBotPlayer
 - REINFORCE → Rookie cascade consolidate (top-3 attackers)
-- DEPLOY / FORTIFY → `run_mcts_placement` (one MCTS pick per army over destination tiles)
+- DEPLOY / FORTIFY → one-shot UCB distribute (`linear`|`softmax` via `--placement-distribute`); bulk strip+place per fortify cluster; no placement MCTS
 - ATTACK → `run_mcts_attack`; post-conquest → `run_mcts_spree` (`EndAttack` vs continue)
 - Else legacy UCB1 bandit when `mcts_iterations == 0`
 - History JSON: nested `attack` / `spree` / `placement` tables (legacy flat → `attack` only)
@@ -99,7 +99,7 @@ REINFORCE → ATTACK → DEPLOY → FORTIFY → (next player) → GAME_OVER
 
 ### Common CLI Flags
 `--mcts-iterations`, `--mcts-depth`, `--mcts-breadth`, `--mcts-rollout` (`uniform`|`rookie`),
-`--mcts-no-history-prior`, `--mcts-bandit-only`, `--mcts-history PATH`, `--workers`, `--matches`, `--save-every`
+`--mcts-no-history-prior`, `--mcts-bandit-only`, `--mcts-history PATH`, `--placement-distribute`, `--placement-softmax-temp`, `--workers`, `--matches`, `--save-every`
 
 ### Path Helpers (`mcts_train/paths.py`)
 `repo_root()`, `data_dir()`, `logs_dir()`, `ensure_repo_on_sys_path()`

@@ -277,6 +277,8 @@ def _run_calibration_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     m_rollout: RolloutKind = w["mcts_rollout"]
     m_depth = int(w["mcts_depth"])
     m_breadth = int(w["mcts_breadth"])
+    placement_distribute = str(w.get("placement_distribute", "linear"))
+    placement_softmax_temp = float(w.get("placement_softmax_temp", 1.0))
 
     sim: Simulator = w["sim"]
     mcts_history = w["mcts_history"]
@@ -305,6 +307,8 @@ def _run_calibration_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
                 mcts_use_history_prior=m_prior,
                 mcts_depth=m_depth,
                 mcts_breadth=m_breadth,
+                placement_distribute=placement_distribute,
+                placement_softmax_temp=placement_softmax_temp,
             )
         except MaxStepsTimeout:
             max_steps_restarts += 1
@@ -367,6 +371,8 @@ def _run_calibration_serial(
     m_prior: bool,
     m_depth: int,
     m_breadth: int,
+    placement_distribute: str,
+    placement_softmax_temp: float,
     progress_every: int,
     seat_wins: List[int],
     type_wins: Dict[str, int],
@@ -396,6 +402,8 @@ def _run_calibration_serial(
                 mcts_use_history_prior=m_prior,
                 mcts_depth=m_depth,
                 mcts_breadth=m_breadth,
+                placement_distribute=placement_distribute,
+                placement_softmax_temp=placement_softmax_temp,
             )
         except MaxStepsTimeout as e:
             max_steps_restarts += 1
@@ -591,6 +599,19 @@ def main() -> None:
             f"Default: {DEFAULT_MCTS_BREADTH}."
         ),
     )
+    ap.add_argument(
+        "--placement-distribute",
+        choices=("linear", "softmax"),
+        default="linear",
+        help="One-shot DEPLOY/FORTIFY allocation weights (Mctsland). Default: linear.",
+    )
+    ap.add_argument(
+        "--placement-softmax-temp",
+        type=float,
+        default=1.0,
+        metavar="T",
+        help="Softmax temperature when --placement-distribute=softmax. Default: 1.0.",
+    )
     args = ap.parse_args()
     full_attack = bool(args.full_attack) and not bool(args.one_round_only)
 
@@ -760,6 +781,8 @@ def main() -> None:
                 m_prior=m_prior,
                 m_depth=m_depth,
                 m_breadth=m_breadth,
+                placement_distribute=str(args.placement_distribute),
+                placement_softmax_temp=float(args.placement_softmax_temp),
                 progress_every=progress_every,
                 seat_wins=seat_wins,
                 type_wins=type_wins,
@@ -803,6 +826,8 @@ def main() -> None:
             "mcts_breadth": m_breadth,
             "full_attack": full_attack,
             "mcts_history_path": hist_path_str,
+            "placement_distribute": str(args.placement_distribute),
+            "placement_softmax_temp": float(args.placement_softmax_temp),
         }
 
         chunk_args_list: List[Dict[str, Any]] = []

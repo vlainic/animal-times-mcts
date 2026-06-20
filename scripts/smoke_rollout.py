@@ -282,6 +282,8 @@ def _make_bot(
     mcts_use_history_prior: bool = True,
     mcts_depth: int = DEFAULT_MCTS_DEPTH,
     mcts_breadth: int = DEFAULT_MCTS_BREADTH,
+    placement_distribute: str = "linear",
+    placement_softmax_temp: float = 1.0,
 ) -> Any:
     """Construct one seat's bot. ``type_id`` 1 = Rookie, 2 = Mctsland (optional module)."""
     if type_id == 1:
@@ -305,6 +307,8 @@ def _make_bot(
             mcts_use_history_prior=mcts_use_history_prior,
             mcts_depth=mcts_depth,
             mcts_breadth=mcts_breadth,
+            placement_distribute=placement_distribute,
+            placement_softmax_temp=placement_softmax_temp,
         )
     raise ValueError(f"internal: unsupported bot type_id {type_id}")
 
@@ -324,6 +328,8 @@ def run_one_rollout(
     mcts_use_history_prior: bool = True,
     mcts_depth: int = DEFAULT_MCTS_DEPTH,
     mcts_breadth: int = DEFAULT_MCTS_BREADTH,
+    placement_distribute: str = "linear",
+    placement_softmax_temp: float = 1.0,
 ) -> RolloutResult:
     """
     Play one full game; return winner seat and final state.
@@ -350,6 +356,8 @@ def run_one_rollout(
             mcts_use_history_prior=mcts_use_history_prior,
             mcts_depth=mcts_depth,
             mcts_breadth=mcts_breadth,
+            placement_distribute=placement_distribute,
+            placement_softmax_temp=placement_softmax_temp,
         )
         for s in range(n_bots)
     }
@@ -657,6 +665,19 @@ def main() -> None:
             f"Default: {DEFAULT_MCTS_BREADTH}."
         ),
     )
+    ap.add_argument(
+        "--placement-distribute",
+        choices=("linear", "softmax"),
+        default="linear",
+        help="One-shot DEPLOY/FORTIFY allocation weights (Mctsland). Default: linear.",
+    )
+    ap.add_argument(
+        "--placement-softmax-temp",
+        type=float,
+        default=1.0,
+        metavar="T",
+        help="Softmax temperature when --placement-distribute=softmax. Default: 1.0.",
+    )
     args = ap.parse_args()
     try:
         n_bots, seat_types = parse_bots_spec(args.bots)
@@ -717,6 +738,8 @@ def main() -> None:
             mcts_use_history_prior=not bool(args.mcts_no_history_prior),
             mcts_depth=m_depth,
             mcts_breadth=m_breadth,
+            placement_distribute=str(args.placement_distribute),
+            placement_softmax_temp=float(args.placement_softmax_temp),
         )
     except RolloutFailure as e:
         exit_code = 1

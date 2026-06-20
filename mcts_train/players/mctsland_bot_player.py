@@ -3,8 +3,10 @@ Mctsland bot — attack decisions from historical visit/win stats; other phases 
 
 **Non-attack phases**
 
-DEPLOY and FORTIFY use **placement MCTS** (:func:`~mcts_train.mcts_search.run_mcts_placement`) —
-one pick per army over destination tiles keyed by a 7-field **placement** history table.
+DEPLOY and FORTIFY use **one-shot placement**: UCB scores all destination tiles once, then
+allocate all pending units via linear or softmax sampling (bulk ``DeployPlace`` /
+``MoveUnits``). FORTIFY bulk-strips each cluster to a hub, then distributes the pool.
+Attack uses ephemeral MCTS (:func:`~mcts_train.mcts_search.run_mcts_attack`).
 **REINFORCE** ranks attack options like Rookie, then
 **cascades** consolidation across the top **3** distinct attacker tiles (by weight): fill #1 to
 ``ATT_UNITS_CAP`` (**5**), keep those armies, then #2, then #3. ``_stored_attack`` is rank #1
@@ -81,7 +83,7 @@ import math
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Deque, Dict, List, Optional, Set, Tuple
+from typing import Any, Deque, Dict, List, Literal, Optional, Set, Tuple
 
 import numpy as np
 
@@ -92,7 +94,6 @@ from ..mcts_search import (
     DEFAULT_MCTS_ITERATIONS,
     RolloutKind,
     run_mcts_attack,
-    run_mcts_placement,
     run_mcts_spree,
 )
 from ..missions import (
@@ -133,6 +134,43 @@ DEFAULT_HISTORY: HistoryBundle = {
 }
 CONNECTIVITY_ALL_CAP = 5
 CONNECTIVITY_MISSION_CAP = 4
+PlacementDistributeKind = Literal["linear", "softmax"]
+
+
+def _distribute_units(
+    scores: Dict[int, float],
+    n_units: int,
+    rng: np.random.Generator,
+    *,
+    mode: PlacementDistributeKind = "linear",
+    temperature: float = 1.0,
+) -> Dict[int, int]:
+    """Sample ``n_units`` across destinations using fixed score weights."""
+    if n_units <= 0 or not scores:
+        return {}
+    dests = list(scores.keys())
+    if mode == "softmax":
+        temp = max(float(temperature), 1e-9)
+        weights = [math.exp(float(scores[d]) / temp) for d in dests]
+    else:
+        weights = [max(float(scores[d]), 1e-9) for d in dests]
+    total_w = sum(weights)
+    if total_w <= 0:
+        weights = [1.0] * len(dests)
+        total_w = float(len(dests))
+    probs = [w / total_w for w in weights]
+    counts: Dict[int, int] = {d: 0 for d in dests}
+    for _ in range(n_units):
+        r = float(rng.random())
+        cum = 0.0
+        picked = dests[-1]
+        for i, d in enumerate(dests):
+            cum += probs[i]
+            if r <= cum:
+                picked = d
+                break
+        counts[picked] += 1
+    return {d: c for d, c in counts.items() if c > 0}
 
 _MCTS_TRAIN_ROOT = Path(__file__).resolve().parents[1]
 _PY_ROOT = repo_root()
@@ -393,6 +431,8 @@ class MctslandBotPlayer:
         mcts_use_history_prior: If true, root-edge priors from ``history`` when expanding.
         mcts_depth: Max rollout ``apply`` steps per simulation (CLI ``--mcts-depth``).
         mcts_breadth: Max children expanded per tree node (CLI ``--mcts-breadth``).
+        placement_distribute: ``linear`` or ``softmax`` weights for one-shot DEPLOY/FORTIFY.
+        placement_softmax_temp: Temperature when ``placement_distribute == "softmax"``.
         _rookie: Rookie delegate for shared reinforce attack planning.
         _episode_decisions: ``(table, key_str, seat)`` for each logged decision this game.
     """
@@ -407,6 +447,8 @@ class MctslandBotPlayer:
     mcts_use_history_prior: bool = True
     mcts_depth: int = DEFAULT_MCTS_DEPTH  # CLI: --mcts-depth
     mcts_breadth: int = DEFAULT_MCTS_BREADTH  # CLI: --mcts-breadth
+    placement_distribute: PlacementDistributeKind = "linear"
+    placement_softmax_temp: float = 1.0
     _rookie: RookieBotPlayer = field(init=False, repr=False)
     _episode_decisions: List[Tuple[str, str, int]] = field(default_factory=list, repr=False)
     _chain_anchor_ucb1: Optional[float] = field(default=None, init=False, repr=False)
@@ -414,21 +456,21 @@ class MctslandBotPlayer:
     _consolidate_idx: int = field(default=0, init=False, repr=False)
     _fortify_pending_clusters: Optional[List[Set[int]]] = field(default=None, init=False, repr=False)
     _fortify_clusters_total: int = field(default=0, init=False, repr=False)
-    _fortify_current_cluster: Optional[Set[int]] = field(default=None, init=False, repr=False)
-    _fortify_hub: Optional[int] = field(default=None, init=False, repr=False)
-    _fortify_pool_total: int = field(default=0, init=False, repr=False)
-    _fortify_pool_remaining: int = field(default=0, init=False, repr=False)
-    _fortify_phase: str = field(default="strip", init=False, repr=False)
     _placement_cache: Optional[Dict[int, Tuple[Action, str, float]]] = field(
         default=None, init=False, repr=False
     )
     _placement_cache_total_visits: int = field(default=0, init=False, repr=False)
-    _placement_cache_mcts_done: bool = field(default=False, init=False, repr=False)
-    _placement_cache_refresh_tiles: Set[int] = field(default_factory=set, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.mcts_rollout not in ("uniform", "rookie"):
             raise ValueError(f"mcts_rollout must be 'uniform' or 'rookie', got {self.mcts_rollout!r}")
+        if self.placement_distribute not in ("linear", "softmax"):
+            raise ValueError(
+                f"placement_distribute must be 'linear' or 'softmax', "
+                f"got {self.placement_distribute!r}"
+            )
+        if self.placement_softmax_temp <= 0:
+            raise ValueError("placement_softmax_temp must be > 0")
         if self.history_readonly:
             self.history = normalize_history(self.history)
         else:
@@ -449,6 +491,8 @@ class MctslandBotPlayer:
         mcts_use_history_prior: bool = True,
         mcts_depth: int = DEFAULT_MCTS_DEPTH,
         mcts_breadth: int = DEFAULT_MCTS_BREADTH,
+        placement_distribute: PlacementDistributeKind = "linear",
+        placement_softmax_temp: float = 1.0,
     ) -> "MctslandBotPlayer":
         """
         Bot for **inference**: load stats from JSON; default ``history_readonly=True``.
@@ -467,6 +511,8 @@ class MctslandBotPlayer:
             mcts_use_history_prior=mcts_use_history_prior,
             mcts_depth=mcts_depth,
             mcts_breadth=mcts_breadth,
+            placement_distribute=placement_distribute,
+            placement_softmax_temp=placement_softmax_temp,
         )
 
     def reset_for_new_turn(self) -> None:
@@ -477,11 +523,6 @@ class MctslandBotPlayer:
         self._consolidate_idx = 0
         self._fortify_pending_clusters = None
         self._fortify_clusters_total = 0
-        self._fortify_current_cluster = None
-        self._fortify_hub = None
-        self._fortify_pool_total = 0
-        self._fortify_pool_remaining = 0
-        self._fortify_phase = "strip"
         self._clear_placement_cache()
 
     def reset_for_new_game(self) -> None:
@@ -493,18 +534,11 @@ class MctslandBotPlayer:
         self._consolidate_idx = 0
         self._fortify_pending_clusters = None
         self._fortify_clusters_total = 0
-        self._fortify_current_cluster = None
-        self._fortify_hub = None
-        self._fortify_pool_total = 0
-        self._fortify_pool_remaining = 0
-        self._fortify_phase = "strip"
         self._clear_placement_cache()
 
     def _clear_placement_cache(self) -> None:
         self._placement_cache = None
         self._placement_cache_total_visits = 0
-        self._placement_cache_mcts_done = False
-        self._placement_cache_refresh_tiles = set()
 
     def choose_action(self, state: GameState, rng: np.random.Generator) -> Optional[Action]:
         """Same phase routing as :meth:`RookieBotPlayer.choose_action`; ATTACK uses table/MCTS."""
@@ -783,47 +817,6 @@ class MctslandBotPlayer:
             out.append(cluster)
         return out
 
-    def _history_prior_for_placement(
-        self, state: GameState, m: MapData, action: Action
-    ) -> Tuple[int, float]:
-        """``(prior_visits, prior_mean_z)`` for a placement root arm."""
-        dest = self._placement_destination(action)
-        if dest is None:
-            return 0, DEFAULT_WIN_RATE
-        key_str = placement_key_to_str(self._build_placement_key(state, m, dest))
-        visits, wins = self._lookup_stats(HISTORY_PLACEMENT, key_str)
-        if visits <= 0:
-            return 0, DEFAULT_WIN_RATE
-        return visits, float(wins) / float(visits)
-
-    def _placement_bandit_pick(
-        self, state: GameState, m: MapData, arms: List[Action], rng: np.random.Generator
-    ) -> Action:
-        """UCB1 pick among placement arms when ``mcts_iterations == 0``."""
-        scored: List[Tuple[float, Action, str]] = []
-        keys: List[str] = []
-        for a in arms:
-            dest = self._placement_destination(a)
-            if dest is None:
-                continue
-            key_str = placement_key_to_str(self._build_placement_key(state, m, dest))
-            keys.append(key_str)
-            scored.append((0.0, a, key_str))
-        if not scored:
-            return arms[0]
-        total_visits = sum(self._lookup_stats(HISTORY_PLACEMENT, k)[0] for k in keys)
-        for i, (_, a, key_str) in enumerate(scored):
-            scored[i] = (
-                self._score_key(HISTORY_PLACEMENT, key_str, total_visits),
-                a,
-                key_str,
-            )
-        scored.sort(key=lambda x: x[0], reverse=True)
-        best_score = scored[0][0]
-        top = [t for t in scored if t[0] >= best_score - 1e-9]
-        pick = top[int(rng.integers(0, len(top)))]
-        return pick[1]
-
     def _placement_cache_arm_dests(self, arms: List[Action]) -> Set[int]:
         out: Set[int] = set()
         for a in arms:
@@ -856,152 +849,24 @@ class MctslandBotPlayer:
             cache[dest] = (a, key_str, score)
         self._placement_cache = cache
         self._placement_cache_total_visits = total_visits
-        self._placement_cache_mcts_done = False
 
-    def _sync_placement_cache_arms(self, arms: List[Action]) -> None:
-        if self._placement_cache is None:
-            return
-        for a in arms:
-            dest = self._placement_destination(a)
-            if dest is None or dest not in self._placement_cache:
-                continue
-            _, key_str, score = self._placement_cache[dest]
-            self._placement_cache[dest] = (a, key_str, score)
-
-    def _refresh_placement_cache_tiles(
-        self, state: GameState, m: MapData, tiles: Set[int]
-    ) -> None:
-        if self._placement_cache is None or not tiles:
-            return
-        old_total = self._placement_cache_total_visits
-        new_total = old_total
-        refreshed: Set[int] = set()
-        for t in tiles:
-            if t not in self._placement_cache:
-                continue
-            a, old_key, _ = self._placement_cache[t]
-            new_key = placement_key_to_str(self._build_placement_key(state, m, t))
-            if new_key == old_key:
-                continue
-            old_v = self._lookup_stats(HISTORY_PLACEMENT, old_key)[0]
-            new_v = self._lookup_stats(HISTORY_PLACEMENT, new_key)[0]
-            new_total = new_total - old_v + new_v
-            self._placement_cache[t] = (a, new_key, 0.0)
-            refreshed.add(t)
-        if new_total != old_total:
-            self._placement_cache_total_visits = new_total
-            for dest in self._placement_cache:
-                a, key_str, _ = self._placement_cache[dest]
-                self._placement_cache[dest] = (
-                    a, key_str,
-                    self._score_key(HISTORY_PLACEMENT, key_str, new_total),
-                )
-        else:
-            for t in refreshed:
-                a, key_str, _ = self._placement_cache[t]
-                self._placement_cache[t] = (
-                    a, key_str,
-                    self._score_key(HISTORY_PLACEMENT, key_str, old_total),
-                )
-
-    @staticmethod
-    def _placement_cache_changed_tiles(action: Action) -> Set[int]:
-        tiles: Set[int] = set()
-        if isinstance(action, DeployPlace):
-            tiles.add(int(action.territory))
-        elif isinstance(action, MoveUnits):
-            tiles.add(int(action.dst))
-            tiles.add(int(action.src))
-        return tiles
-
-    def _placement_bandit_pick_from_cache(self, rng: np.random.Generator) -> Action:
-        if not self._placement_cache:
-            raise ValueError("placement cache is empty")
-        scored = [(entry[2], entry[0]) for entry in self._placement_cache.values()]
-        scored.sort(key=lambda x: x[0], reverse=True)
-        best_score = scored[0][0]
-        top = [t for t in scored if t[0] >= best_score - 1e-9]
-        return top[int(rng.integers(0, len(top)))][1]
-
-    def _placement_cached_pick(
-        self,
-        state: GameState,
-        m: MapData,
-        arms: List[Action],
-        rng: np.random.Generator,
-    ) -> Action:
-        """Cached placement pick: score all cluster dests once; refresh only changed tiles."""
+    def _placement_scores(
+        self, state: GameState, m: MapData, arms: List[Action]
+    ) -> Dict[int, float]:
+        """UCB score per destination tile (one pass, no MCTS)."""
         if not arms:
-            raise ValueError("placement_pick requires at least one arm")
-        if self._placement_cache_refresh_tiles:
-            self._refresh_placement_cache_tiles(
-                state, m, self._placement_cache_refresh_tiles
-            )
-            self._placement_cache_refresh_tiles = set()
-        if self._placement_cache_needs_init(arms):
+            return {}
+        if self._placement_cache is None or set(self._placement_cache.keys()) != self._placement_cache_arm_dests(arms):
             self._init_placement_cache(state, m, arms)
         else:
-            self._sync_placement_cache_arms(arms)
-        legal = self.sim.legal_actions(state)
-        chosen: Optional[Action] = None
-        if self.mcts_iterations > 0 and not self._placement_cache_mcts_done:
-            prior = (
-                (lambda a: self._history_prior_for_placement(state, m, a))
-                if self.mcts_use_history_prior
-                else None
-            )
-            chosen = run_mcts_placement(
-                self.sim,
-                state,
-                self.seat,
-                arms,
-                self.mcts_iterations,
-                rng,
-                ucb_c=self.ucb_c,
-                rollout_kind=self.mcts_rollout,
-                action_prior=prior,
-                mcts_depth=self.mcts_depth,
-                mcts_breadth=self.mcts_breadth,
-            )
-            self._placement_cache_mcts_done = True
-        if chosen is None or chosen not in legal:
-            chosen = self._placement_bandit_pick_from_cache(rng)
-        self._placement_cache_refresh_tiles = self._placement_cache_changed_tiles(chosen)
-        return chosen
-
-    def _placement_pick(
-        self,
-        state: GameState,
-        m: MapData,
-        arms: List[Action],
-        rng: np.random.Generator,
-    ) -> Action:
-        """MCTS or bandit pick among placement root arms."""
-        if not arms:
-            raise ValueError("placement_pick requires at least one arm")
-        chosen: Optional[Action] = None
-        if self.mcts_iterations > 0:
-            prior = (
-                (lambda a: self._history_prior_for_placement(state, m, a))
-                if self.mcts_use_history_prior
-                else None
-            )
-            chosen = run_mcts_placement(
-                self.sim,
-                state,
-                self.seat,
-                arms,
-                self.mcts_iterations,
-                rng,
-                ucb_c=self.ucb_c,
-                rollout_kind=self.mcts_rollout,
-                action_prior=prior,
-                mcts_depth=self.mcts_depth,
-                mcts_breadth=self.mcts_breadth,
-            )
-        if chosen is None or chosen not in self.sim.legal_actions(state):
-            chosen = self._placement_bandit_pick(state, m, arms, rng)
-        return chosen
+            for a in arms:
+                dest = self._placement_destination(a)
+                if dest is None or dest not in self._placement_cache:
+                    continue
+                _, key_str, score = self._placement_cache[dest]
+                self._placement_cache[dest] = (a, key_str, score)
+        assert self._placement_cache is not None
+        return {dest: float(entry[2]) for dest, entry in self._placement_cache.items()}
 
     def _log_placement_pick(
         self, state: GameState, m: MapData, action: Action, key_str: str
@@ -1013,21 +878,19 @@ class MctslandBotPlayer:
             f"[PLACEMENT_PICK] seat={self.seat} key={key_str} dest={name}",
         )
 
-    def _issue_placement(
-        self, state: GameState, m: MapData, action: Action, rng: np.random.Generator
-    ) -> Action:
-        """Log placement key and episode decision; return ``action``."""
-        dest = self._placement_destination(action)
-        if dest is None:
-            return action
-        key_str = placement_key_to_str(self._build_placement_key(state, m, dest))
-        self._log_placement_pick(state, m, action, key_str)
-        self._episode_decisions.append((HISTORY_PLACEMENT, key_str, self.seat))
-        return action
+    def _record_placement_dest(
+        self, state: GameState, m: MapData, dest: int, count: int
+    ) -> None:
+        """Log ``count`` placement keys for training (one per army)."""
+        for _ in range(count):
+            key_str = placement_key_to_str(self._build_placement_key(state, m, dest))
+            self._log_placement_pick(state, m, DeployPlace(dest, 1), key_str)
+            self._episode_decisions.append((HISTORY_PLACEMENT, key_str, self.seat))
 
     def _deploy(self, state: GameState, m: MapData, rng: np.random.Generator) -> Action:
-        """One pending army per call: cached MCTS/bandit over ``DeployPlace`` arms."""
-        if int(state.pending_deploy_armies[self.seat]) <= 0:
+        """One-shot DEPLOY: score all tiles, distribute pending armies, bulk apply."""
+        pending = int(state.pending_deploy_armies[self.seat])
+        if pending <= 0:
             self._clear_placement_cache()
             return EndDeploy()
         legal = self.sim.legal_actions(state)
@@ -1035,8 +898,22 @@ class MctslandBotPlayer:
         if not arms:
             self._clear_placement_cache()
             return EndDeploy()
-        chosen = self._placement_cached_pick(state, m, arms, rng)
-        return self._issue_placement(state, m, chosen, rng)
+        scores = self._placement_scores(state, m, arms)
+        counts = _distribute_units(
+            scores,
+            pending,
+            rng,
+            mode=self.placement_distribute,
+            temperature=self.placement_softmax_temp,
+        )
+        for t in sorted(counts.keys()):
+            k = int(counts[t])
+            if k <= 0:
+                continue
+            self._record_placement_dest(state, m, t, k)
+            self.sim.apply(state, DeployPlace(t, k))
+        self._clear_placement_cache()
+        return EndDeploy()
 
     @staticmethod
     def _fortify_pool_size(state: GameState, cluster: Set[int]) -> int:
@@ -1095,19 +972,73 @@ class MctslandBotPlayer:
     def _fortify_strip_move(
         self, state: GameState, m: MapData, cluster: Set[int], hub: int
     ) -> Optional[MoveUnits]:
-        """Move +1 from an excess non-hub tile toward ``hub`` along cluster edges."""
-        legal = set(self.sim.legal_actions(state))
+        """One bulk hop from an excess non-hub tile toward ``hub``."""
         dist = self._fortify_dist_to_hub(m, cluster, hub)
+        seat = self.seat
         for src in sorted(cluster):
             if src == hub or int(state.units[src]) <= 1:
                 continue
             dst = self._fortify_next_hop(m, cluster, src, dist)
             if dst is None:
                 continue
-            mv = MoveUnits(src, dst, 1)
-            if mv in legal:
-                return mv
+            e = int(state.units[src]) - 1
+            if not self._fortify_can_move(state, m, seat, src, dst, e):
+                continue
+            return MoveUnits(src, dst, e)
         return None
+
+    def _fortify_can_move(
+        self,
+        state: GameState,
+        m: MapData,
+        seat: int,
+        src: int,
+        dst: int,
+        count: int,
+    ) -> bool:
+        if count <= 0:
+            return False
+        if state.owners[src] != seat or state.owners[dst] != seat:
+            return False
+        if dst not in m.neighbors(src):
+            return False
+        return int(state.units[src]) > count
+
+    def _fortify_bulk_strip(
+        self, state: GameState, m: MapData, cluster: Set[int], hub: int
+    ) -> None:
+        """Strip all excess in ``cluster`` to ``hub`` via bulk ``MoveUnits`` hops."""
+        while not self._fortify_strip_complete(state, cluster, hub):
+            mv = self._fortify_strip_move(state, m, cluster, hub)
+            if mv is None:
+                break
+            self.sim.apply(state, mv)
+
+    def _fortify_src_for_dst(
+        self,
+        state: GameState,
+        m: MapData,
+        cluster: Set[int],
+        hub: int,
+        dst: int,
+        count: int,
+    ) -> Optional[int]:
+        """Pick a source tile that can send ``count`` armies to ``dst``."""
+        seat = self.seat
+        if self._fortify_can_move(state, m, seat, hub, dst, count):
+            return hub
+        best_src: Optional[int] = None
+        best_u = 0
+        for src in sorted(cluster):
+            if src == dst or dst not in m.neighbors(src):
+                continue
+            u = int(state.units[src])
+            if u <= count:
+                continue
+            if u > best_u or (u == best_u and (best_src is None or src < best_src)):
+                best_u = u
+                best_src = src
+        return best_src
 
     def _fortify_place_arms(
         self, state: GameState, m: MapData, cluster: Set[int], hub: int
@@ -1141,14 +1072,6 @@ class MctslandBotPlayer:
     def _log_fortify(self, state: GameState, msg: str) -> None:
         self.sim._append_log(state, f"[FORTIFY] seat={self.seat} {msg}")
 
-    def _fortify_cluster_label(self) -> str:
-        pending = self._fortify_pending_clusters or []
-        total = self._fortify_clusters_total
-        if total <= 0:
-            return "cluster=?"
-        current = total - len(pending)
-        return f"cluster={current}/{total}"
-
     def _fortify_cluster_tiles_snap(
         self, state: GameState, m: MapData, cluster: Set[int]
     ) -> str:
@@ -1164,104 +1087,76 @@ class MctslandBotPlayer:
         ]
         self._fortify_pending_clusters = clusters
         self._fortify_clusters_total = len(clusters)
-        self._fortify_current_cluster = None
-        self._fortify_hub = None
-        self._fortify_pool_total = 0
-        self._fortify_pool_remaining = 0
-        self._fortify_phase = "strip"
 
-    def _fortify_finish_cluster(self, state: GameState, clabel: str, msg: str) -> None:
-        self._log_fortify(state, f"{clabel} {msg}")
-        self._fortify_current_cluster = None
-        self._fortify_hub = None
-        self._fortify_pool_total = 0
-        self._fortify_pool_remaining = 0
-        self._fortify_phase = "strip"
+    def _fortify_one_cluster(
+        self,
+        state: GameState,
+        m: MapData,
+        cluster: Set[int],
+        rng: np.random.Generator,
+        *,
+        clabel: str,
+    ) -> None:
+        """Bulk strip to hub, then one-shot distribute pool across cluster destinations."""
+        hub = self._fortify_pick_hub(cluster)
+        pool_size = self._fortify_pool_size(state, cluster)
+        tiles = self._fortify_cluster_tiles_snap(state, m, cluster)
+        if pool_size <= 0:
+            self._log_fortify(state, f"{clabel} start pool=0 skip tiles={tiles}")
+            return
+        hub_name = m.territory_names[hub]
+        self._log_fortify(
+            state,
+            f"{clabel} start pool={pool_size} hub={hub_name} tiles={tiles}",
+        )
+        self._fortify_bulk_strip(state, m, cluster, hub)
         self._clear_placement_cache()
+        self._log_fortify(
+            state,
+            f"{clabel} strip_done pool={pool_size} hub_units={int(state.units[hub])}",
+        )
+        arms = self._fortify_place_arms(state, m, cluster, hub)
+        if not arms:
+            self._log_fortify(state, f"{clabel} place_stuck pool={pool_size}")
+            return
+        scores = self._placement_scores(state, m, arms)
+        counts = _distribute_units(
+            scores,
+            pool_size,
+            rng,
+            mode=self.placement_distribute,
+            temperature=self.placement_softmax_temp,
+        )
+        for dst in sorted(counts.keys()):
+            k = int(counts[dst])
+            if k <= 0:
+                continue
+            src = self._fortify_src_for_dst(state, m, cluster, hub, dst, k)
+            if src is None:
+                continue
+            self._record_placement_dest(state, m, dst, k)
+            self.sim.apply(state, MoveUnits(src, dst, k))
+        self._clear_placement_cache()
+        self._log_fortify(state, f"{clabel} cluster_done pool={pool_size}")
 
     def _fortify(self, state: GameState, m: MapData, rng: np.random.Generator) -> Action:
         """
-        Per cluster: strip excess to min-1 on each tile (pool on hub), then ``pool`` placement
-        picks (one unit each) across cluster destinations. One action per ``choose_action`` call.
+        One ``choose_action``: bulk strip + one-shot place for every pending cluster,
+        then ``EndFortify`` (all ``MoveUnits`` applied internally).
         """
         if self._fortify_pending_clusters is None:
             self._init_fortify_clusters(state, m)
-
-        while True:
-            if self._fortify_current_cluster is None:
-                pending = self._fortify_pending_clusters
-                if not pending:
-                    self._log_fortify(
-                        state,
-                        f"EndFortify clusters_done={self._fortify_clusters_total}",
-                    )
-                    return EndFortify()
-                cluster = pending.pop(0)
-                self._fortify_current_cluster = cluster
-                hub = self._fortify_pick_hub(cluster)
-                self._fortify_hub = hub
-                pool_size = self._fortify_pool_size(state, cluster)
-                self._fortify_pool_total = pool_size
-                self._fortify_pool_remaining = 0
-                self._fortify_phase = "strip"
-                clabel = self._fortify_cluster_label()
-                tiles = self._fortify_cluster_tiles_snap(state, m, cluster)
-                if pool_size == 0:
-                    self._fortify_finish_cluster(state, clabel, f"start pool=0 skip tiles={tiles}")
-                    continue
-                hub_name = m.territory_names[hub]
-                self._log_fortify(
-                    state,
-                    f"{clabel} start pool={pool_size} hub={hub_name} tiles={tiles}",
-                )
-
-            cluster = self._fortify_current_cluster
-            hub = self._fortify_hub
-            assert cluster is not None and hub is not None
-            clabel = self._fortify_cluster_label()
-
-            if self._fortify_phase == "strip":
-                if self._fortify_strip_complete(state, cluster, hub):
-                    self._fortify_pool_remaining = self._fortify_pool_total
-                    self._fortify_phase = "place"
-                    self._clear_placement_cache()
-                    self._log_fortify(
-                        state,
-                        f"{clabel} strip_done pool={self._fortify_pool_total} "
-                        f"hub_units={int(state.units[hub])}",
-                    )
-                    continue
-                mv = self._fortify_strip_move(state, m, cluster, hub)
-                if mv is not None:
-                    self._log_fortify(state, f"{clabel} phase=strip action={mv!r}")
-                    return mv
-                self._fortify_finish_cluster(state, clabel, "strip_stuck skip")
-                continue
-
-            if self._fortify_pool_remaining <= 0:
-                self._fortify_finish_cluster(state, clabel, "cluster_done")
-                continue
-
-            arms = self._fortify_place_arms(state, m, cluster, hub)
-            if not arms:
-                self._fortify_finish_cluster(
-                    state,
-                    clabel,
-                    f"place_stuck remaining={self._fortify_pool_remaining}",
-                )
-                continue
-
-            chosen = self._placement_cached_pick(state, m, arms, rng)
-            self._fortify_pool_remaining -= 1
-            placed = self._fortify_pool_total - self._fortify_pool_remaining
-            dest = self._placement_destination(chosen)
-            dest_name = m.territory_names[dest] if dest is not None else "?"
-            self._log_fortify(
-                state,
-                f"{clabel} place {placed}/{self._fortify_pool_total} "
-                f"dst={dest_name} action={chosen!r}",
-            )
-            return self._issue_placement(state, m, chosen, rng)
+        pending = self._fortify_pending_clusters or []
+        total = self._fortify_clusters_total
+        idx = 0
+        while pending:
+            cluster = pending.pop(0)
+            idx += 1
+            clabel = f"cluster={idx}/{total}" if total > 0 else "cluster=?"
+            self._fortify_one_cluster(state, m, cluster, rng, clabel=clabel)
+        self._fortify_pending_clusters = []
+        self._log_fortify(state, f"EndFortify clusters_done={total}")
+        return EndFortify()
 
     def _lookup_stats(self, table: str, key_str: str) -> Tuple[int, int]:
         row = self.history.get(table, {}).get(key_str)
