@@ -282,7 +282,7 @@ def _make_bot(
     mcts_use_history_prior: bool = True,
     mcts_depth: int = DEFAULT_MCTS_DEPTH,
     mcts_breadth: int = DEFAULT_MCTS_BREADTH,
-    placement_distribute: str = "linear",
+    placement_distribute: str = "softmax",
     placement_softmax_temp: float = 1.0,
 ) -> Any:
     """Construct one seat's bot. ``type_id`` 1 = Rookie, 2 = Mctsland (optional module)."""
@@ -328,7 +328,7 @@ def run_one_rollout(
     mcts_use_history_prior: bool = True,
     mcts_depth: int = DEFAULT_MCTS_DEPTH,
     mcts_breadth: int = DEFAULT_MCTS_BREADTH,
-    placement_distribute: str = "linear",
+    placement_distribute: str = "softmax",
     placement_softmax_temp: float = 1.0,
 ) -> RolloutResult:
     """
@@ -668,8 +668,8 @@ def main() -> None:
     ap.add_argument(
         "--placement-distribute",
         choices=("linear", "softmax"),
-        default="linear",
-        help="One-shot DEPLOY/FORTIFY allocation weights (Mctsland). Default: linear.",
+        default="softmax",
+        help="One-shot DEPLOY/FORTIFY allocation weights (Mctsland). Default: softmax.",
     )
     ap.add_argument(
         "--placement-softmax-temp",

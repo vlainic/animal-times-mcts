@@ -81,7 +81,7 @@ REINFORCE → ATTACK → DEPLOY → FORTIFY → (next player) → GAME_OVER
 
 ### MctslandBotPlayer
 - REINFORCE → Rookie cascade consolidate (top-3 attackers)
-- DEPLOY / FORTIFY → one-shot UCB distribute (`linear`|`softmax` via `--placement-distribute`); bulk strip+place per fortify cluster; no placement MCTS
+- DEPLOY / FORTIFY → one-shot UCB distribute (`linear`|`softmax` via `--placement-distribute`, default **softmax**); bulk strip+place per fortify cluster; no placement MCTS
 - ATTACK → `run_mcts_attack`; post-conquest → `run_mcts_spree` (`EndAttack` vs continue)
 - Else legacy UCB1 bandit when `mcts_iterations == 0`
 - History JSON: nested `attack` / `spree` / `placement` tables (legacy flat → `attack` only)

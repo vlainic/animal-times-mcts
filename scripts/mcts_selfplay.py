@@ -191,7 +191,7 @@ def run_one_match(
     mcts_use_history_prior: bool,
     mcts_depth: int,
     mcts_breadth: int,
-    placement_distribute: str = "linear",
+    placement_distribute: str = "softmax",
     placement_softmax_temp: float = 1.0,
 ) -> Optional[int]:
     """
@@ -287,7 +287,7 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     m_prior = bool(w["mcts_use_history_prior"])
     m_depth = int(w["mcts_depth"])
     m_breadth = int(w["mcts_breadth"])
-    placement_distribute = str(w.get("placement_distribute", "linear"))
+    placement_distribute = str(w.get("placement_distribute", "softmax"))
     placement_softmax_temp = float(w.get("placement_softmax_temp", 1.0))
 
     sim: Simulator = w["sim"]
@@ -427,8 +427,8 @@ def main() -> None:
     ap.add_argument(
         "--placement-distribute",
         choices=("linear", "softmax"),
-        default="linear",
-        help="One-shot DEPLOY/FORTIFY allocation weights. Default: linear.",
+        default="softmax",
+        help="One-shot DEPLOY/FORTIFY allocation weights. Default: softmax.",
     )
     ap.add_argument(
         "--placement-softmax-temp",

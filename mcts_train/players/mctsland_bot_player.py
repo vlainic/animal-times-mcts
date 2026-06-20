@@ -142,7 +142,7 @@ def _distribute_units(
     n_units: int,
     rng: np.random.Generator,
     *,
-    mode: PlacementDistributeKind = "linear",
+    mode: PlacementDistributeKind = "softmax",
     temperature: float = 1.0,
 ) -> Dict[int, int]:
     """Sample ``n_units`` across destinations using fixed score weights."""
@@ -447,7 +447,7 @@ class MctslandBotPlayer:
     mcts_use_history_prior: bool = True
     mcts_depth: int = DEFAULT_MCTS_DEPTH  # CLI: --mcts-depth
     mcts_breadth: int = DEFAULT_MCTS_BREADTH  # CLI: --mcts-breadth
-    placement_distribute: PlacementDistributeKind = "linear"
+    placement_distribute: PlacementDistributeKind = "softmax"
     placement_softmax_temp: float = 1.0
     _rookie: RookieBotPlayer = field(init=False, repr=False)
     _episode_decisions: List[Tuple[str, str, int]] = field(default_factory=list, repr=False)
@@ -491,7 +491,7 @@ class MctslandBotPlayer:
         mcts_use_history_prior: bool = True,
         mcts_depth: int = DEFAULT_MCTS_DEPTH,
         mcts_breadth: int = DEFAULT_MCTS_BREADTH,
-        placement_distribute: PlacementDistributeKind = "linear",
+        placement_distribute: PlacementDistributeKind = "softmax",
         placement_softmax_temp: float = 1.0,
     ) -> "MctslandBotPlayer":
         """
