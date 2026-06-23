@@ -59,9 +59,11 @@ of defender tile's continent; ``def_land_bucket`` is defender empire size; ``ucb
 attack bandit score vs the first-combat anchor (``0`` = below 50 %, ``1`` = between, ``2`` = at or
 above anchor).
 
-**Deploy state key** (DEPLOY, 7-tuple)
+**Deploy state key** (DEPLOY, 2-tuple, max 50)
 
-``(att_units, def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)``
+``(fortify_decile, att_units)`` where ``fortify_decile`` is 1..10 from **this turn's** legal
+``DeployPlace`` dests ranked by fortify-table UCB1 (6-tuple lookup each); ``att_units`` is
+``min(units[t], 5)``. Not a global history percentile.
 
 **Fortify state key** (FORTIFY place after strip, 6-tuple — no ``att_units``; dest is always min 1)
 
@@ -183,6 +185,75 @@ def _distribute_units(
                 break
         counts[picked] += 1
     return {d: c for d, c in counts.items() if c > 0}
+
+
+def bucket_pct_to_decile(pct: float) -> int:
+    """Map relative rank percentile in [0, 1] (1 = best) to decile 1..10."""
+    p = max(0.0, min(1.0, float(pct)))
+    if p > 0.9:
+        return 10
+    if p > 0.8:
+        return 9
+    if p > 0.7:
+        return 8
+    if p > 0.6:
+        return 7
+    if p > 0.5:
+        return 6
+    if p > 0.4:
+        return 5
+    if p > 0.3:
+        return 4
+    if p > 0.2:
+        return 3
+    if p > 0.1:
+        return 2
+    return 1
+
+
+def fortify_deciles_for_scores(fortify_scores: Dict[int, float]) -> Dict[int, int]:
+    """Per-turn decile 1..10 from fortify UCB ranks among current dests (not global)."""
+    if not fortify_scores:
+        return {}
+    if len(fortify_scores) == 1:
+        return {next(iter(fortify_scores)): 10}
+    ranked = sorted(fortify_scores.items(), key=lambda x: (-x[1], x[0]))
+    n = len(ranked)
+    out: Dict[int, int] = {}
+    for i, (dest, _) in enumerate(ranked):
+        pct = 1.0 - (i / float(n - 1))
+        out[dest] = bucket_pct_to_decile(pct)
+    return out
+
+
+def _deploy_key_field_count(key_str: str) -> int:
+    inner = key_str.strip()
+    if inner.startswith("(") and inner.endswith(")"):
+        inner = inner[1:-1]
+    if not inner:
+        return 0
+    return len([p for p in inner.split(",") if p.strip()])
+
+
+def _parse_deploy_history_table(raw: Any, *, warn: bool = False) -> HistoryTable:
+    """Load deploy table; skip legacy 7-field keys."""
+    table = _parse_history_table(raw)
+    legacy = 0
+    out: HistoryTable = {}
+    for k, v in table.items():
+        n_fields = _deploy_key_field_count(k)
+        if n_fields == 7:
+            legacy += 1
+            continue
+        if n_fields == 2:
+            out[k] = v
+    if warn and legacy:
+        print(
+            "warning: ignoring legacy 7-field deploy keys (",
+            legacy,
+            ") — retrain with 2-tuple deploy keys",
+        )
+    return out
 
 _MCTS_TRAIN_ROOT = Path(__file__).resolve().parents[1]
 _PY_ROOT = repo_root()
@@ -330,7 +401,7 @@ def load_history_from_json(path: Path | str, *, warn: bool = True) -> HistoryBun
         return {
             HISTORY_ATTACK: _parse_history_table(raw.get(HISTORY_ATTACK, {})),
             HISTORY_SPREE: _parse_history_table(raw.get(HISTORY_SPREE, {})),
-            HISTORY_DEPLOY: _parse_history_table(raw.get(HISTORY_DEPLOY, {})),
+            HISTORY_DEPLOY: _parse_deploy_history_table(raw.get(HISTORY_DEPLOY, {}), warn=warn),
             HISTORY_FORTIFY: _parse_history_table(raw.get(HISTORY_FORTIFY, {})),
         }
     return {
@@ -424,15 +495,15 @@ def tuple_key_to_str(key: Tuple[int, ...]) -> str:
     return "(" + ",".join(str(k) for k in key) + ")"
 
 
-def str_to_deploy_key(s: str) -> Tuple[int, int, int, int, int, int, int]:
-    """Parse deploy key string (7 fields)."""
+def str_to_deploy_key(s: str) -> Tuple[int, int]:
+    """Parse deploy key string (2 fields: fortify_decile, att_units)."""
     inner = s.strip()
     if inner.startswith("(") and inner.endswith(")"):
         inner = inner[1:-1]
     parts = [p.strip() for p in inner.split(",")]
-    if len(parts) != 7:
+    if len(parts) != 2:
         raise ValueError(f"invalid deploy key: {s!r}")
-    return tuple(int(p) for p in parts)  # type: ignore[return-value]
+    return int(parts[0]), int(parts[1])
 
 
 def str_to_fortify_key(s: str) -> Tuple[int, int, int, int, int, int]:
@@ -503,6 +574,7 @@ class MctslandBotPlayer:
     )
     _placement_cache_table: Optional[str] = field(default=None, init=False, repr=False)
     _placement_cache_total_visits: int = field(default=0, init=False, repr=False)
+    _deploy_deciles: Dict[int, int] = field(default_factory=dict, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.mcts_rollout not in ("uniform", "rookie"):
@@ -583,6 +655,7 @@ class MctslandBotPlayer:
         self._placement_cache = None
         self._placement_cache_table = None
         self._placement_cache_total_visits = 0
+        self._deploy_deciles = {}
 
     def choose_action(self, state: GameState, rng: np.random.Generator) -> Optional[Action]:
         """Same phase routing as :meth:`RookieBotPlayer.choose_action`; ATTACK uses table/MCTS."""
@@ -825,12 +898,12 @@ class MctslandBotPlayer:
         )
 
     def _build_deploy_key(
-        self, state: GameState, m: MapData, t: int
-    ) -> Tuple[int, int, int, int, int, int, int]:
-        """7-tuple deploy key for destination owned tile ``t``."""
-        cluster = self._own_cluster_bfs(state, m, t)
+        self, state: GameState, m: MapData, t: int, *, decile: int
+    ) -> Tuple[int, int]:
+        """2-tuple deploy key: fortify UCB decile (this turn) + capped units on tile."""
+        del m
         att_units = min(int(state.units[t]), ATT_UNITS_CAP)
-        return (att_units, *self._redistribute_key_tail(state, m, t, cluster))
+        return (int(decile), att_units)
 
     def _build_fortify_key(
         self, state: GameState, m: MapData, t: int
@@ -936,6 +1009,49 @@ class MctslandBotPlayer:
         assert self._placement_cache is not None
         return {dest: float(entry[2]) for dest, entry in self._placement_cache.items()}
 
+    def _fortify_ucb_scores_for_dests(
+        self, state: GameState, m: MapData, dests: Set[int]
+    ) -> Dict[int, float]:
+        """Fortify-table UCB1 per dest (6-tuple keys; total_visits over this turn's dests)."""
+        if not dests:
+            return {}
+        key_by_dest: Dict[int, str] = {}
+        for t in sorted(dests):
+            key_by_dest[t] = tuple_key_to_str(self._build_fortify_key(state, m, t))
+        total_visits = sum(
+            self._lookup_stats(HISTORY_FORTIFY, k)[0] for k in key_by_dest.values()
+        )
+        return {
+            t: self._score_key(HISTORY_FORTIFY, key_by_dest[t], total_visits)
+            for t in dests
+        }
+
+    def _deploy_scores(
+        self, state: GameState, m: MapData, arms: List[Action]
+    ) -> Dict[int, float]:
+        """
+        Per-turn deploy scores: rank dests by fortify UCB → decile; score deploy 2-tuple keys.
+        """
+        dests = self._placement_cache_arm_dests(arms)
+        if not dests:
+            return {}
+        fortify_scores = self._fortify_ucb_scores_for_dests(state, m, dests)
+        self._deploy_deciles = fortify_deciles_for_scores(fortify_scores)
+        deploy_key_by_dest: Dict[int, str] = {}
+        for t in sorted(dests):
+            decile = self._deploy_deciles[t]
+            deploy_key_by_dest[t] = tuple_key_to_str(
+                self._build_deploy_key(state, m, t, decile=decile)
+            )
+        total_visits = sum(
+            self._lookup_stats(HISTORY_DEPLOY, k)[0]
+            for k in deploy_key_by_dest.values()
+        )
+        return {
+            t: self._score_key(HISTORY_DEPLOY, deploy_key_by_dest[t], total_visits)
+            for t in dests
+        }
+
     def _log_deploy_pick(
         self, state: GameState, m: MapData, action: Action, key_str: str
     ) -> None:
@@ -959,8 +1075,11 @@ class MctslandBotPlayer:
         self, state: GameState, m: MapData, dest: int, count: int
     ) -> None:
         """Log ``count`` deploy keys for training (one per army)."""
+        decile = self._deploy_deciles.get(dest, 10)
         for _ in range(count):
-            key_str = tuple_key_to_str(self._build_deploy_key(state, m, dest))
+            key_str = tuple_key_to_str(
+                self._build_deploy_key(state, m, dest, decile=decile)
+            )
             self._log_deploy_pick(state, m, DeployPlace(dest, 1), key_str)
             self._episode_decisions.append((HISTORY_DEPLOY, key_str, self.seat))
 
@@ -984,13 +1103,7 @@ class MctslandBotPlayer:
         if not arms:
             self._clear_placement_cache()
             return EndDeploy()
-        scores = self._placement_scores(
-            state,
-            m,
-            arms,
-            table=HISTORY_DEPLOY,
-            build_key=self._build_deploy_key,
-        )
+        scores = self._deploy_scores(state, m, arms)
         counts = _distribute_units(
             scores,
             pending,

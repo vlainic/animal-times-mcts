@@ -2,12 +2,26 @@
 
 ## Current focus
 - **Shipped game**: pure GDScript (no Python in export); territory nodes + MetaData; one-click Export All.
-- **Optional offline**: `mcts_train/` (repo root) for Milos-rule simulator, **Mctsland** bot (ephemeral MCTS at ATTACK / spree / placement + nested JSON history), and self-play training (not runtime).
-- **Mctsland** (Python): three learned decision types — **attack**, **spree** (chain continue), **placement** (DEPLOY/FORTIFY); REINFORCE uses Rookie top-3 cascade consolidate.
+- **Optional offline**: `mcts_train/` (repo root) for Milos-rule simulator, **Mctsland** bot (ephemeral MCTS at ATTACK/spree + bandit deploy/fortify + nested JSON history), and self-play training (not runtime).
+- **Mctsland** (Python): four learned tables — **attack**, **spree**, **deploy**, **fortify**; REINFORCE uses Rookie top-3 cascade consolidate.
 - Recent HUD/MP polish: **DEPLOY undo**, **elimination mission compact display + custom tooltip**, optional **elimination-mission assign cheat**, **game event log** under MissionDisplay.
 
 ## Recent changes (session summary)
-- **Python `mcts_train` (offline Milos sim, not shipped)** — training / smoke only; lives under `Python/mcts_train/`:
+- **One-shot DEPLOY / FORTIFY placement** (`mctsland_bot_player.py`):
+  - **DEPLOY**: one `choose_action` — rank legal dests by fortify-table UCB → decile 1–10 (per-turn, not global) → deploy 2-tuple UCB → softmax/linear distribute → bulk `DeployPlace`; return `EndDeploy`.
+  - **FORTIFY**: one `choose_action` — all clusters: bulk strip to hub, one-shot place via fortify UCB + distribute; return `EndFortify`. No placement MCTS.
+  - **Default** `--placement-distribute softmax` (CLI on smoke/selfplay/calibrate).
+  - **Rollout cap**: `rollout_limits.random_legal_action` fallback when micro-step cap hit (smoke/selfplay); dynamic cap from fortify pool estimate.
+- **History JSON schema** (breaking vs old `placement`):
+  - Nested: ``attack`` / ``spree`` / ``deploy`` / ``fortify`` — **no** ``placement`` table.
+  - **Fortify key** (6-tuple, max ~2,400): ``(def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)`` — post-strip, no ``att_units``.
+  - **Deploy key** (2-tuple, max **50**): ``(fortify_decile, att_units)`` — ``fortify_decile`` from **this turn's** DEPLOY arms ranked by fortify UCB1; ``att_units`` = ``min(units[t], 5)``. Legacy 7-field deploy keys ignored on load.
+  - Legacy ``placement`` section ignored on load (warn). Retrain after schema changes.
+- **Calibration / selfplay scripts**:
+  - ``--batch-size`` decoupled from progress/save cadence (default 1).
+  - ``mcts_calibrate.py``: checkpoint ``data/mcts_calibration.json`` every ``--progress-every``; ``--fresh`` / ``--calibration``.
+  - Selfplay parallel: ``--save-every`` milestones only (not every task).
+- **Python `mcts_train` (offline Milos sim, not shipped)** — training / smoke only; lives under `mcts_train/` + `scripts/`:
   - **`GameState` RNG (environment + policy)**: ``rng_cards`` (deck / reshuffle), ``rng_dice`` (combat + mutual-destruction rerolls), ``rng_policy`` (stochastic bots / policies). No single ``rng`` on state.
   - **`Simulator.new_game(num_players, player_names, *, mission_pool=...)`**: draws **OS entropy** via ``numpy.random.SeedSequence().spawn(5)`` → independent streams for **board setup**, **mission shuffle** (from ``missions.json`` pool), **cards**, **dice**, **policy**; no caller-supplied seeds. ``deepcopy`` preserves all three generators for MCTS branches.
   - **`GameState.event_log`**: :class:`EventLog` (enabled via ``Simulator(log_events=True)``; FIFO ``max_lines``). Tags: **`[COMBAT]`**, **`[CONTINENT]`**, **`[ELIM]`**, **`[WIN]`** with mission detail from ``MissionSpec.raw`` (``_mission_win_log_detail``).
@@ -19,14 +33,15 @@
   - **Smoke script** `Python/mcts_train/scripts/smoke_rollout.py`: **``--bots``** pattern (``1``=Rookie, ``2``=Mctsland). MCTS CLI (Mctsland): ``--mcts-iterations`` (default 100), ``--mcts-depth`` (5), ``--mcts-breadth`` (5), ``--mcts-rollout`` ``uniform|rookie``, ``--mcts-no-history-prior``, ``--mcts-bandit-only`` (``iterations=0`` → legacy JSON bandit only). ``--mcts-history PATH`` = inference read-only.
   - **Mctsland bot** (`mcts_train/players/mctsland_bot_player.py`):
     - **REINFORCE**: Rookie weighted top-3 attack plan; **cascade consolidate** each distinct attacker to ``ATT_UNITS_CAP`` (5); ``_stored_attack`` = rank #1.
-    - **DEPLOY**: **placement MCTS** — one pick per pending army; **placement cache** scores all dest tiles once per DEPLOY phase (first pick = full MCTS, picks 2+ = bandit from cache; incremental key refresh on picked tile only).
-    - **FORTIFY**: own connected components with ``len >= 2`` only; **strip-then-place** — strip excess to min-1 into hub pool, then exactly ``pool`` placement picks (one unit each) via cached placement MCTS/bandit over cluster destinations.
+    - **DEPLOY**: one-shot UCB distribute; deploy history key ``(fortify_decile, att_units)``; logs ``[DEPLOY_PICK]``.
+    - **FORTIFY**: bulk strip + one-shot place per cluster in one call; fortify 6-tuple keys; logs ``[FORTIFY_PICK]``.
     - **ATTACK**: Rookie overrun slide; **``run_mcts_attack``**; post-conquest **``run_mcts_spree``** (``EndAttack`` vs continue) — both stop/continue logged to spree history. Requires ``combat_one_round_only=False`` for chain + spree keys.
-    - **History JSON** (nested): ``attack`` / ``spree`` / ``placement`` tables; legacy flat files → ``attack`` only; old attack-only archives under ``data/attack_only/``.
+    - **History JSON** (nested): ``attack`` / ``spree`` / ``deploy`` / ``fortify``; legacy flat → ``attack`` only; legacy ``placement`` ignored.
     - **State keys** (coarse; priors + post-game table, not MCTS node identity):
       - **Attack** 7-tuple: ``(att_units, def_units, mission_bucket, coin_kind, att_cont_bucket, def_cont_bucket, def_land_bucket)``
-      - **Spree** 5-tuple: ``(is_mission, is_card, att_cont_bucket, def_land_bucket, ucb_rank)`` — ``ucb_rank`` vs 1st-combat anchor (0/&lt;50%, 1/mid, 2/≥anchor)
-      - **Placement** 7-tuple: ``(att_units, def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)`` — ``connectivity_all`` = **other** own tiles in component (0..5, alone=0); ``connectivity_mission`` = mission tiles in cluster (0..4)
+      - **Spree** 5-tuple: ``(is_mission, is_card, att_cont_bucket, def_land_bucket, ucb_rank)``
+      - **Deploy** 2-tuple: ``(fortify_decile, att_units)`` — decile per-turn from fortify UCB rank among legal DEPLOY dests
+      - **Fortify** 6-tuple: ``(def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)``
     - **Training**: ``notify_game_over`` increments ``visits``/``wins`` per logged key per table (whole-game win). Shared ``history`` dict via ``ensure_history_bundle`` (in-place normalize; no deepcopy per bot).
     - **Inference**: ``from_history_file``, ``history_readonly=True``.
   - **Self-play** `mcts_selfplay.py`: same MCTS CLI flags; default **``--full-attack``** (``combat_one_round_only=False``) so spree keys populate; ``--one-round-only`` to opt out. Worker merge: ``ensure_history_bundle(base)`` in ``merge_history_tables`` + ``history = merge_history_tables(...)`` (fixes empty JSON in multi-worker runs). ``mission_pool="all"``; ``data/mctsland_history_<stamp>.json``; ``--history``, ``--save-every``.
@@ -41,7 +56,7 @@
 - **Dev cheat**: `Globals.CHEAT_ALWAYS_ELIMINATION_MISSION` — when true, server `_assign_missions_to_players` prefers valid **elimination** missions for **human** players (tutorial human mission unchanged). Toggle in `globals.gd`; turn off for release builds.
 
 ## Next steps
-- **Train** fresh nested history (attack + spree + placement) via ``mcts_selfplay.py`` with default full-attack; retrain after placement cache / fortify algorithm changes if comparing old JSON win rates.
+- **Train** fresh nested history (attack + spree + deploy + fortify) via ``mcts_selfplay.py`` with default full-attack; old ``placement`` / 7-tuple deploy JSON not compatible — retrain from scratch for deploy/fortify bandits.
 - Optional: wire **Mctsland** into Godot bot seat (load trained JSON + MCTS knobs or bandit-only for speed).
 - Optional: heuristic at truncated rollout depth; progressive re-ranking of ``untried``; history priors on non-root actions.
 - Optional: per-decision backprop into JSON (today: whole-game win on all tables).

@@ -12,14 +12,14 @@
 - **Python `mcts_train`**: Offline Milos simulator + **Mctsland**; **not** shipped in export.
   - **Simulator**: split RNG streams; ``mission_pool="all"``; elimination + turn-queue parity with Godot.
   - **`mcts_search.py`**: Real **ephemeral MCTS** at ATTACK — select/expand/rollout/backprop on ``Simulator``; defaults **100** iters, **depth 5** applies per rollout, **breadth 5** children/node (UCB1 candidate filter); root combats + optional JSON priors. **Truncated rollouts** use ``_eval_truncated`` heuristic (0.25 territory ratio + 0.25 mission progress) instead of flat 0.
-  - **MctslandBotPlayer**: REINFORCE = Rookie top-3 cascade consolidate; DEPLOY/FORTIFY = **placement MCTS** with **session cache** (init all dest keys once; pick 1 = MCTS, 2+ = bandit; refresh only changed tiles); FORTIFY = strip-then-place per cluster; ATTACK = **attack MCTS** + **spree MCTS** (stop + continue both logged). ``--mcts-bandit-only`` / ``iterations=0`` = UCB1 bandit per table.
-  - **Nested history JSON**: ``{ "attack": {...}, "spree": {...}, "placement": {...} }``; ``load_history_from_json`` / ``save_history_to_json``; ``ensure_history_bundle`` for shared training dict; worker merge via in-place ``merge_history_tables`` + reassignment.
-  - **MCTS entrypoints** (`mcts_search.py`): ``run_mcts_attack``, ``run_mcts_spree``, ``run_mcts_placement``.
-  - **CLI** (selfplay / smoke / calibrate): ``--mcts-iterations``, ``--mcts-depth``, ``--mcts-breadth``, ``--mcts-rollout``, ``--mcts-no-history-prior``, ``--mcts-bandit-only``, ``--mcts-history``, **``--workers``** (parallel game-level processing).
+  - **MctslandBotPlayer**: REINFORCE = Rookie top-3 cascade; **DEPLOY** = one-shot fortify-decile + deploy 2-tuple UCB distribute (default softmax); **FORTIFY** = bulk strip + one-shot 6-tuple UCB distribute; ATTACK = **attack MCTS** + **spree MCTS**. ``--mcts-bandit-only`` / ``iterations=0`` = UCB1 bandit per table. ``--placement-distribute linear|softmax``, ``--placement-softmax-temp``.
+  - **Nested history JSON**: ``{ "attack": {...}, "spree": {...}, "deploy": {...}, "fortify": {...} }``; legacy ``placement`` and 7-field deploy keys ignored on load.
+  - **MCTS entrypoints** (`mcts_search.py`): ``run_mcts_attack``, ``run_mcts_spree`` (placement MCTS removed from bot path).
+  - **CLI** (selfplay / smoke / calibrate): ``--mcts-iterations``, ``--mcts-depth``, ``--mcts-breadth``, ``--mcts-rollout``, ``--mcts-no-history-prior``, ``--mcts-bandit-only``, ``--mcts-history``, ``--placement-distribute``, ``--placement-softmax-temp``, **``--workers``**, ``--batch-size``, ``--save-every`` / ``--progress-every``.
   - **`mcts_selfplay.py`**: default ``--full-attack`` (spree requires ``combat_one_round_only=False``); **`rollout_limits.py`** dynamic micro-step cap; **`smoke_rollout.py`** failure dumps to ``logs/``.
   - **`mcts_calibrate.py`**, **`mcts_search_smoke.py`**.
   - **``.gitignore``**: ``__pycache__/``, ``*.py[cod]``; bytecode untracked from repo.
-  - **Parallel execution**: ``--workers W`` (0=all CPUs) via ``multiprocessing.Pool`` + ``imap_unordered``; selfplay saves history after each sub-chunk; calibrate prints progress per task. Sub-chunk size controlled by ``--save-every`` (selfplay) / ``--progress-every`` (calibrate).
+  - **Parallel execution**: ``--workers W`` (0=all CPUs); ``--batch-size`` per task (default 1); selfplay saves at ``--save-every`` milestones; calibrate checkpoints ``data/mcts_calibration.json`` at ``--progress-every``.
   - **`load_history_from_json`**, **`from_history_file`** for inference.
 
 ## What was reverted
@@ -34,4 +34,4 @@
 ## Known issues
 - If multi-land or tutorial queue behavior is wanted again, apply changes from `networkx_revert.md`.
 - **Elimination retarget** (Godot HUD): server updates `target_animal` but not always long `description`; tooltip prose can lag retarget.
-- **Mctsland**: JSON backprop is still **match win**, not per-decision outcome. Full games with default 100×MCTS per attack/spree/placement step are **slow** — placement cache skips repeated placement MCTS after first pick per session; tune depth/breadth/iterations, ``--mcts-bandit-only``, or ``--workers``. **Self-play must use full-attack** (default) or spree table stays empty. Retrain after key schema changes. Legacy flat history and ``data/attack_only/`` lack spree/placement stats.
+- **Mctsland**: JSON backprop is still **match win**, not per-decision outcome. Attack MCTS still slow at default 100 iters; DEPLOY/FORTIFY are fast (one-shot bandit). Retrain after key schema changes (``placement`` → ``deploy``/``fortify``; deploy 7-tuple → 2-tuple). Legacy flat history and ``data/attack_only/`` lack spree/deploy/fortify stats.

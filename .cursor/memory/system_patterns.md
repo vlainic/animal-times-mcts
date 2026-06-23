@@ -2645,11 +2645,12 @@ func sync_territory_units(territory_name: String, new_unit_count: int):
 
 ### Python `mcts_train` — Mctsland MCTS decisions (offline, not runtime)
 
-- **Module** ``mcts_search.py``: defaults 100 iters / depth 5 / breadth 5. **``run_mcts_attack``** — root legal ``Combat`` arms. **``run_mcts_spree``** — post-conquest ``EndAttack`` vs continue with picked combat. **``run_mcts_placement``** — caller-supplied ``DeployPlace`` / ``MoveUnits`` arms (one pick per army). Truncated rollouts → ``_eval_truncated``. Coarse keys are **not** MCTS node IDs (priors + post-game table only).
+- **Module** ``mcts_search.py``: defaults 100 iters / depth 5 / breadth 5. **``run_mcts_attack``** — root legal ``Combat`` arms. **``run_mcts_spree``** — post-conquest ``EndAttack`` vs continue. Truncated rollouts → ``_eval_truncated``. Coarse keys are **not** MCTS node IDs (priors + post-game table only).
 - **Bot** ``mctsland_bot_player.py``:
   - **REINFORCE**: Rookie top-3 cascade consolidate to 5 units per attacker tile.
-  - **DEPLOY / FORTIFY**: placement MCTS + **session cache** (score all cluster/owned dests once; MCTS on first pick only; bandit thereafter; incremental key refresh on picked tile; rescore all only if ``total_visits`` shifts). Fortify: **strip-then-place** (hub pool, bounded place iterations).
+  - **DEPLOY**: one-shot — per-turn fortify UCB rank → decile 1–10 → deploy 2-tuple ``(fortify_decile, att_units)`` UCB → softmax/linear distribute; bulk ``DeployPlace``.
+  - **FORTIFY**: one-shot per turn — bulk strip to hub + 6-tuple UCB distribute per cluster; bulk ``MoveUnits``.
   - **ATTACK**: attack MCTS; spree MCTS for chain; both stop/continue logged. Needs ``combat_one_round_only=False``.
-  - **History**: nested ``attack`` / ``spree`` / ``placement``; ``ensure_history_bundle`` for training; worker merge in-place.
-- **Keys**: attack 7-tuple; spree 5-tuple; placement 7-tuple (``connectivity_all`` = other own tiles 0..5; ``connectivity_mission`` 0..4).
+  - **History**: nested ``attack`` / ``spree`` / ``deploy`` / ``fortify``; ``ensure_history_bundle`` for training; worker merge in-place.
+- **Keys**: attack 7-tuple; spree 5-tuple; deploy 2-tuple ``(fortify_decile, att_units)`` max 50; fortify 6-tuple.
 - **Self-play** ``scripts/mcts_selfplay.py``: writes nested JSON to ``data/``; default full-attack; worker history merge fix.

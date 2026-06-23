@@ -85,7 +85,7 @@ REINFORCE → ATTACK → DEPLOY → FORTIFY → (next player) → GAME_OVER
 - ATTACK → `run_mcts_attack`; post-conquest → `run_mcts_spree` (`EndAttack` vs continue)
 - Else legacy UCB1 bandit when `mcts_iterations == 0`
 - History JSON: nested `attack` / `spree` / `deploy` / `fortify` tables (legacy flat → `attack` only; legacy `placement` ignored)
-- Attack key 7-tuple; spree key 5-tuple; deploy key 7-tuple `(att_units, def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)`; fortify key 6-tuple (same fields minus `att_units`) — `connectivity_all` = other own tiles in component (0..5, alone=0); `connectivity_mission` = mission tiles in cluster (0..4)
+- Attack key 7-tuple; spree key 5-tuple; deploy key 2-tuple `(fortify_decile, att_units)` — decile from per-turn fortify UCB rank among legal DEPLOY dests (1..10 × att_units 1..5, max 50); fortify key 6-tuple `(def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)`
 - Training: `notify_game_over` increments visits/wins per logged key (whole-game win)
 - Inference: `from_history_file`, `history_readonly=True`
 

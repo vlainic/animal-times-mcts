@@ -12,4 +12,4 @@
   - Minimal refactors; keep file structure stable.
   - Server is single source of truth for all game state.
   - Multiplayer lobby is a separate scene; game scene loads only on Start Game.
-  - Optional **Python** rollout sim (`mcts_train/`) is for offline tooling only; shipped game stays GDScript-only. **Mctsland** learns attack, spree (chain), and placement decisions from nested JSON history. Fresh entropy per ``new_game`` (no baked-in replay unless you add seeds later).
+  - Optional **Python** rollout sim (`mcts_train/`) is for offline tooling only; shipped game stays GDScript-only. **Mctsland** learns attack, spree, deploy, and fortify from nested JSON history (deploy 2-tuple, fortify 6-tuple).

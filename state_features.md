@@ -105,7 +105,7 @@ new 7-field keys.
 {
   "attack": { "(3,2,2,0,1,2,4)": { "visits": 10, "wins": 3 } },
   "spree": { "(1,0,1,2,1)": { "visits": 5, "wins": 2 } },
-  "deploy": { "(2,1,1,0,1,3,2)": { "visits": 8, "wins": 2 } },
+  "deploy": { "(8,3)": { "visits": 8, "wins": 2 } },
   "fortify": { "(1,0,2,4,1)": { "visits": 6, "wins": 1 } }
 }
 ```
@@ -120,9 +120,10 @@ Old archives: ``data/attack_only/``.
 chooses Continue. ``ucb_rank``: attack bandit score vs 1st-combat anchor (0 = &lt;50%, 1 = mid, 2 = ≥ anchor).
 Replaces declining-% chain gate.
 
-**Deploy state key** (7-tuple)
+**Deploy state key** (2-tuple, max 50)
 
-``(att_units, def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)``
+``(fortify_decile, att_units)`` — ``fortify_decile`` 1..10 from **this turn's** DEPLOY arms ranked by
+fortify-table UCB1 (per-turn, not global); ``att_units`` = ``min(units[t], 5)``.
 
 **Fortify state key** (6-tuple, post-strip — no ``att_units``)
 

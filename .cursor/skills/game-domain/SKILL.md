@@ -103,7 +103,7 @@ When rollout hits depth cap:
 | Rookie | standard heuristics | looped attack + overrun slide |
 | Mctsland | one-shot UCB placement (DEPLOY/FORTIFY); Rookie REINFORCE cascade | MCTS (`run_mcts_attack`) or legacy UCB1 bandit |
 
-**Mctsland deploy / fortify:** one `choose_action` per phase scores destinations via separate **deploy** (7-tuple) and **fortify** (6-tuple, no `att_units`) history tables; distributes units with `--placement-distribute` (default softmax). FORTIFY bulk-strips each cluster to a hub, then one-shot places the pool.
+**Mctsland deploy / fortify:** DEPLOY uses 2-tuple deploy keys `(fortify_decile, att_units)` — decile ranks this turn's dests by fortify-table UCB1; fortify keeps 6-tuple keys. One-shot distribute via `--placement-distribute` (default softmax).
 
 Mctsland chain attacks: UCB1 quality gate vs first combat anchor (90%→50% floor); no fixed chain cap like Rookie's 3.
 
