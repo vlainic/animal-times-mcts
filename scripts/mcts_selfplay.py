@@ -16,6 +16,9 @@ conquest + elimination + special, shuffled together.
 If ``--history`` is omitted, the file name includes the **run start** stamp ``YYMMddhhmmss``:
 ``data/mctsland_history_<stamp>.json`` (repo root).
 
+``--matches`` counts only games that **finish with a winner**; games that hit ``max_steps``
+without a winner are discarded (no history backprop) and restarted.
+
 ``--workers`` runs independent match chunks in parallel (``0`` = all CPUs); histories are
 merged by summing ``visits``/``wins`` per key at the end. ``--batch-size`` sets matches per
 parallel task (default ``1``). ``--save-every K`` flushes JSON every K completed matches
@@ -59,6 +62,7 @@ from mcts_train.rollout_limits import MICRO_STEP_BASE, micro_step_cap, random_le
 from mcts_train.simulator import Simulator
 from mcts_train.paths import data_dir
 from mcts_train.state import GamePhase
+from smoke_rollout import MaxStepsTimeout
 
 _SMOKE_PLAYER_NAMES = ("beaver", "koala", "llama", "meerkat", "panda", "pig")
 _HISTORY_DATA_DIR = data_dir()
@@ -203,6 +207,7 @@ def run_one_match(
     Play one game; backprop attack stats on all bots. Returns winner seat.
 
     Raises ``MatchStuck`` if micro-steps stall (caller should restart the match).
+    Raises ``MaxStepsTimeout`` if the outer-step cap is hit without a winner (no backprop).
     """
     names = _SMOKE_PLAYER_NAMES[:n_bots]
     ensure_history_bundle(history)
@@ -275,9 +280,11 @@ def run_one_match(
                 return w
             if state.current_player_seat() != seat:
                 break
-    for b in bots:
-        b.notify_game_over(state.winner)
-    return state.winner
+    raise MaxStepsTimeout(
+        f"max_steps={max_steps} reached without winner (phase={state.phase})",
+        state=state,
+        step=max_steps,
+    )
 
 
 def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
@@ -301,6 +308,7 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     seat_wins = [0] * n_bots
     completed = 0
     stuck_restarts = 0
+    max_steps_restarts = 0
 
     while completed < chunk_matches:
         try:
@@ -320,11 +328,16 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
         except MatchStuck:
             stuck_restarts += 1
             continue
+        except MaxStepsTimeout:
+            max_steps_restarts += 1
+            continue
         except RuntimeError as e:
             raise RuntimeError(f"selfplay match failed: {e}") from e
+        if w is None or not (0 <= w < n_bots):
+            max_steps_restarts += 1
+            continue
         completed += 1
-        if w is not None and 0 <= w < n_bots:
-            seat_wins[w] += 1
+        seat_wins[w] += 1
 
     history_delta = _history_delta(history_before, history)
     return {
@@ -332,6 +345,7 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
         "seat_wins": seat_wins,
         "completed": completed,
         "stuck_restarts": stuck_restarts,
+        "max_steps_restarts": max_steps_restarts,
     }
 
 
@@ -349,7 +363,7 @@ def main() -> None:
         type=int,
         default=100,
         metavar="X",
-        help="Number of full games to play. Default: 100.",
+        help="Number of games that finish with a winner. Default: 100.",
     )
     ap.add_argument(
         "--workers",
@@ -484,6 +498,7 @@ def main() -> None:
     seat_wins = [0] * n_bots
     completed = 0
     stuck_restarts = 0
+    max_steps_restarts = 0
     save_every = int(args.save_every)
     last_saved = 0
 
@@ -508,12 +523,17 @@ def main() -> None:
                 stuck_restarts += 1
                 print("warning: match", completed + 1, e, "- restarting")
                 continue
+            except MaxStepsTimeout:
+                max_steps_restarts += 1
+                continue
             except RuntimeError as e:
                 print("match", completed + 1, "failed:", e)
                 raise SystemExit(1) from e
+            if w is None or not (0 <= w < n_bots):
+                max_steps_restarts += 1
+                continue
             completed += 1
-            if w is not None and 0 <= w < n_bots:
-                seat_wins[w] += 1
+            seat_wins[w] += 1
             last_saved = _merge_selfplay_save_progress(
                 completed,
                 target_matches,
@@ -571,6 +591,7 @@ def main() -> None:
                     seat_wins[i] += int(c)
                 completed += int(r["completed"])
                 stuck_restarts += int(r["stuck_restarts"])
+                max_steps_restarts += int(r["max_steps_restarts"])
                 last_saved = _merge_selfplay_save_progress(
                     completed,
                     target_matches,
@@ -585,6 +606,8 @@ def main() -> None:
     print("matches", completed, "/", target_matches, "history", history_path)
     if stuck_restarts:
         print("stuck restarts:", stuck_restarts)
+    if max_steps_restarts:
+        print("max_steps restarts:", max_steps_restarts)
     if workers > 1:
         print("workers", workers)
     atk_n, spree_n, deploy_n, fortify_n = _history_key_counts(history)
