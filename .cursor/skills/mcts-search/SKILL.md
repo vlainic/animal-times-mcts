@@ -80,6 +80,12 @@ Called by `MctslandBotPlayer` at ATTACK when `mcts_iterations > 0`.
 - Selfplay: `--save-every K` flushes JSON every K completed matches (parallel and serial)
 - Calibrate: `--progress-every K` prints and checkpoints every K completed matches to `data/mcts_calibration.json` (resume on re-run; `--fresh` to reset)
 
+## Game driver caps
+
+Smoke, selfplay, and calibrate share `rollout_limits.default_max_steps(n_bots)` = **`max(400, 100 * n_bots)`** outer seat handoffs per match; timeout → restart (selfplay/calibrate) or fail (smoke).
+
+Per-turn micro-steps: `micro_step_cap` (base 200) with random legal fallback when exceeded.
+
 ## Performance Tips
 
 - Default 100 iters × many attacks per game = slow

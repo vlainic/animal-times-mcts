@@ -11,6 +11,11 @@ from .state import GamePhase
 MICRO_STEP_BASE = 200
 
 
+def default_max_steps(n_bots: int) -> int:
+    """Outer driver cap per match (one step ≈ one seat handoff)."""
+    return max(400, 100 * int(n_bots))
+
+
 def fortify_pool_for_cap(bot: Any, state: Any) -> int:
     """Estimated fortify pool across multi-tile clusters (for micro-step cap)."""
     if state.phase != GamePhase.FORTIFY:

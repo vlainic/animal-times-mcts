@@ -58,7 +58,12 @@ from mcts_train.players.mctsland_bot_player import (
     resolve_history_json_path,
     save_history_to_json,
 )
-from mcts_train.rollout_limits import MICRO_STEP_BASE, micro_step_cap, random_legal_action
+from mcts_train.rollout_limits import (
+    MICRO_STEP_BASE,
+    default_max_steps,
+    micro_step_cap,
+    random_legal_action,
+)
 from mcts_train.simulator import Simulator
 from mcts_train.paths import data_dir
 from mcts_train.state import GamePhase
@@ -493,7 +498,7 @@ def main() -> None:
 
     workers = _resolve_workers(int(args.workers))
     n_bots = int(args.bots)
-    max_steps = max(800, 250 * n_bots)
+    max_steps = default_max_steps(n_bots)
     target_matches = int(args.matches)
     seat_wins = [0] * n_bots
     completed = 0

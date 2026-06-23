@@ -14,7 +14,8 @@ Smoke test: ``N`` bot seats (default ``N=3``) play in-process.
 
 - Every chosen action is in ``Simulator.legal_actions(state)`` (no illegal moves).
 - The game either reaches ``GAME_OVER`` / ``winner`` or stops after ``max_steps`` outer
-  iterations. Per-turn micro-step cap (``max(200, 10*pool)`` in FORTIFY; else **200**): when
+  seat handoffs (default ``max(500, 100*n_bots)`` via ``rollout_limits.default_max_steps``).
+  Per-turn micro-step cap (``max(200, 10*pool)`` in FORTIFY; else **200**): when
   exceeded, drivers pick a uniform random legal action instead of failing.
 
 **How to run**
@@ -74,7 +75,12 @@ from mcts_train.mcts_search import (
 )
 from mcts_train.paths import failure_log_path
 from mcts_train.players.rookie_bot_player import RookieBotPlayer
-from mcts_train.rollout_limits import MICRO_STEP_BASE, micro_step_cap, random_legal_action
+from mcts_train.rollout_limits import (
+    MICRO_STEP_BASE,
+    default_max_steps,
+    micro_step_cap,
+    random_legal_action,
+)
 from mcts_train.simulator import Simulator
 from mcts_train.state import GamePhase
 
@@ -189,11 +195,6 @@ def rotate_seat_types(seat_types: Tuple[int, ...], offset: int) -> Tuple[int, ..
 
 def type_name(type_id: int) -> str:
     return _BOT_TYPE_NAMES.get(type_id, f"type{type_id}")
-
-
-def default_max_steps(n_bots: int) -> int:
-    """Outer iteration cap per match (same formula as ``mcts_selfplay``)."""
-    return max(20_000, 10_000 * n_bots)
 
 
 def _phase_name(phase: Any) -> str:
