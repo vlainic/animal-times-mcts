@@ -138,6 +138,56 @@ HISTORY_DEPLOY = "deploy"
 HISTORY_FORTIFY = "fortify"
 LEGACY_HISTORY_PLACEMENT = "placement"
 
+DECISION_TYPES = (HISTORY_ATTACK, HISTORY_SPREE, HISTORY_DEPLOY, HISTORY_FORTIFY)
+ALL_MCTS_DECISIONS = frozenset(DECISION_TYPES)
+
+
+def parse_mcts_decisions(spec: str) -> frozenset[str]:
+    """
+    Parse ablation spec: ``full``, ``none``, ``exclude_attack``, or ``include_attack,include_spree``.
+    """
+    raw = str(spec).strip().lower()
+    if not raw:
+        raise ValueError("mcts_decisions spec must not be empty")
+    if raw == "full":
+        return ALL_MCTS_DECISIONS
+    if raw == "none":
+        return frozenset()
+
+    tokens = [t.strip() for t in raw.split(",") if t.strip()]
+    if not tokens:
+        raise ValueError("mcts_decisions spec must not be empty")
+
+    include_types: Set[str] = set()
+    exclude_types: Set[str] = set()
+    for token in tokens:
+        if token.startswith("include_"):
+            dtype = token[len("include_") :]
+            mode = "include"
+        elif token.startswith("exclude_"):
+            dtype = token[len("exclude_") :]
+            mode = "exclude"
+        else:
+            raise ValueError(
+                f"invalid mcts_decisions token {token!r}: use full, none, "
+                "include_<type>, or exclude_<type>"
+            )
+        if dtype not in DECISION_TYPES:
+            raise ValueError(
+                f"unknown decision type {dtype!r} in {token!r}; "
+                f"expected one of {', '.join(DECISION_TYPES)}"
+            )
+        if mode == "include":
+            include_types.add(dtype)
+        else:
+            exclude_types.add(dtype)
+
+    if include_types and exclude_types:
+        raise ValueError("cannot mix include_* and exclude_* in mcts_decisions spec")
+    if include_types:
+        return frozenset(include_types)
+    return ALL_MCTS_DECISIONS - frozenset(exclude_types)
+
 HistoryTable = Dict[str, Dict[str, int]]
 HistoryBundle = Dict[str, HistoryTable]
 DEFAULT_HISTORY: HistoryBundle = {
@@ -546,6 +596,7 @@ class MctslandBotPlayer:
         mcts_breadth: Max children expanded per tree node (CLI ``--mcts-breadth``).
         placement_distribute: ``linear`` or ``softmax`` weights for one-shot DEPLOY/FORTIFY.
         placement_softmax_temp: Temperature when ``placement_distribute == "softmax"``.
+        mcts_decisions: Enabled decision types (attack/spree/deploy/fortify); others use Rookie.
         _rookie: Rookie delegate for shared reinforce attack planning.
         _episode_decisions: ``(table, key_str, seat)`` for each logged decision this game.
     """
@@ -562,6 +613,7 @@ class MctslandBotPlayer:
     mcts_breadth: int = DEFAULT_MCTS_BREADTH  # CLI: --mcts-breadth
     placement_distribute: PlacementDistributeKind = "softmax"
     placement_softmax_temp: float = 1.0
+    mcts_decisions: frozenset[str] = ALL_MCTS_DECISIONS
     _rookie: RookieBotPlayer = field(init=False, repr=False)
     _episode_decisions: List[Tuple[str, str, int]] = field(default_factory=list, repr=False)
     _chain_anchor_ucb1: Optional[float] = field(default=None, init=False, repr=False)
@@ -586,6 +638,9 @@ class MctslandBotPlayer:
             )
         if self.placement_softmax_temp <= 0:
             raise ValueError("placement_softmax_temp must be > 0")
+        if not self.mcts_decisions.issubset(ALL_MCTS_DECISIONS):
+            bad = self.mcts_decisions - ALL_MCTS_DECISIONS
+            raise ValueError(f"invalid mcts_decisions entries: {sorted(bad)}")
         if self.history_readonly:
             self.history = normalize_history(self.history)
         else:
@@ -608,6 +663,7 @@ class MctslandBotPlayer:
         mcts_breadth: int = DEFAULT_MCTS_BREADTH,
         placement_distribute: PlacementDistributeKind = "softmax",
         placement_softmax_temp: float = 1.0,
+        mcts_decisions: frozenset[str] = ALL_MCTS_DECISIONS,
     ) -> "MctslandBotPlayer":
         """
         Bot for **inference**: load stats from JSON; default ``history_readonly=True``.
@@ -628,6 +684,7 @@ class MctslandBotPlayer:
             mcts_breadth=mcts_breadth,
             placement_distribute=placement_distribute,
             placement_softmax_temp=placement_softmax_temp,
+            mcts_decisions=mcts_decisions,
         )
 
     def reset_for_new_turn(self) -> None:
@@ -1094,6 +1151,8 @@ class MctslandBotPlayer:
 
     def _deploy(self, state: GameState, m: MapData, rng: np.random.Generator) -> Action:
         """One-shot DEPLOY: score all tiles, distribute pending armies, bulk apply."""
+        if HISTORY_DEPLOY not in self.mcts_decisions:
+            return self._rookie._deploy(state, m, rng)
         pending = int(state.pending_deploy_armies[self.seat])
         if pending <= 0:
             self._clear_placement_cache()
@@ -1355,6 +1414,8 @@ class MctslandBotPlayer:
         One ``choose_action``: bulk strip + one-shot place for every pending cluster,
         then ``EndFortify`` (all ``MoveUnits`` applied internally).
         """
+        if HISTORY_FORTIFY not in self.mcts_decisions:
+            return self._rookie._fortify(state, m, rng)
         if self._fortify_pending_clusters is None:
             self._init_fortify_clusters(state, m)
         pending = self._fortify_pending_clusters or []
@@ -1509,6 +1570,8 @@ class MctslandBotPlayer:
         elimination/ucb_rank features.
         """
         m = self.sim.m
+        if HISTORY_ATTACK not in self.mcts_decisions:
+            return self._rookie._attack(state, m, rng)
         slide = self._rookie._post_conquest_slide_stored(state, m)
         if slide is not None:
             return slide
@@ -1550,6 +1613,8 @@ class MctslandBotPlayer:
         else:
             spree_key = self._build_spree_key(state, m, chosen, score)
             spree_key_str = spree_key_to_str(spree_key)
+            if HISTORY_SPREE not in self.mcts_decisions:
+                return self._rookie._attack(state, m, rng)
             spree_prior: Optional[Tuple[int, float]] = None
             if self.mcts_use_history_prior:
                 spree_prior = self._history_prior_for_spree(spree_key_str)

@@ -285,19 +285,25 @@ def _make_bot(
     mcts_breadth: int = DEFAULT_MCTS_BREADTH,
     placement_distribute: str = "softmax",
     placement_softmax_temp: float = 1.0,
+    mcts_decisions=None,
 ) -> Any:
     """Construct one seat's bot. ``type_id`` 1 = Rookie, 2 = Mctsland (optional module)."""
     if type_id == 1:
         return RookieBotPlayer(seat, sim)
     if type_id == 2:
         try:
-            from mcts_train.players.mctsland_bot_player import MctslandBotPlayer
+            from mcts_train.players.mctsland_bot_player import (
+                ALL_MCTS_DECISIONS,
+                MctslandBotPlayer,
+            )
         except ImportError as e:
             raise SystemExit(
                 "--bots pattern includes type 2 (Mctsland) but "
                 "`mcts_train.players.mctsland_bot_player` is not available yet.\n"
                 f"Import error: {e}"
             ) from e
+        if mcts_decisions is None:
+            mcts_decisions = ALL_MCTS_DECISIONS
         return MctslandBotPlayer(
             seat,
             sim,
@@ -310,6 +316,7 @@ def _make_bot(
             mcts_breadth=mcts_breadth,
             placement_distribute=placement_distribute,
             placement_softmax_temp=placement_softmax_temp,
+            mcts_decisions=mcts_decisions,
         )
     raise ValueError(f"internal: unsupported bot type_id {type_id}")
 
@@ -331,6 +338,7 @@ def run_one_rollout(
     mcts_breadth: int = DEFAULT_MCTS_BREADTH,
     placement_distribute: str = "softmax",
     placement_softmax_temp: float = 1.0,
+    mcts_decisions=None,
 ) -> RolloutResult:
     """
     Play one full game; return winner seat and final state.
@@ -359,6 +367,7 @@ def run_one_rollout(
             mcts_breadth=mcts_breadth,
             placement_distribute=placement_distribute,
             placement_softmax_temp=placement_softmax_temp,
+            mcts_decisions=mcts_decisions,
         )
         for s in range(n_bots)
     }

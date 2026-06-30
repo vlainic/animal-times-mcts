@@ -13,6 +13,15 @@ history is read-only (no training writes).
     python3 scripts/mcts_calibrate.py --bots 1222 --matches 100 \\
         --mcts-history data/mctsland_history_100a.json
     python3 scripts/mcts_calibrate.py --bots 4 --matches 50
+    python3 scripts/mcts_calibrate.py --bots 1222 --matches 200 --mcts-decisions full
+    python3 scripts/mcts_calibrate.py --bots 1222 --matches 200 --mcts-decisions none
+    python3 scripts/mcts_calibrate.py --bots 1222 --matches 200 --mcts-decisions exclude_attack
+    python3 scripts/mcts_calibrate.py --bots 1222 --matches 200 \\
+        --mcts-decisions include_attack,include_spree
+
+**Decision-type ablation:** ``--mcts-decisions`` toggles which Mctsland types use trained
+logic (attack, spree, deploy, fortify) vs Rookie fallback. ``full`` (default) enables all four;
+``none`` disables all; ``exclude_<type>`` / ``include_<type>`` comma tokens for partial ablation.
 
 **Calibration protocol:** compare ``type wins`` at fixed ``--matches`` when toggling ``--mcts-iterations``,
 ``--mcts-depth``, ``--mcts-breadth``, or ``--mcts-rollout`` (``uniform`` vs ``rookie``).
@@ -125,6 +134,7 @@ def _calibration_config_snapshot(
     mcts_breadth: int,
     mcts_rollout: str,
     mcts_use_history_prior: bool,
+    mcts_decisions: List[str],
     full_attack: bool,
 ) -> Dict[str, Any]:
     return {
@@ -137,6 +147,7 @@ def _calibration_config_snapshot(
         "mcts_breadth": mcts_breadth,
         "mcts_rollout": mcts_rollout,
         "mcts_use_history_prior": mcts_use_history_prior,
+        "mcts_decisions": mcts_decisions,
         "full_attack": full_attack,
     }
 
@@ -279,6 +290,7 @@ def _run_calibration_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     m_breadth = int(w["mcts_breadth"])
     placement_distribute = str(w.get("placement_distribute", "softmax"))
     placement_softmax_temp = float(w.get("placement_softmax_temp", 1.0))
+    mcts_decisions = frozenset(w.get("mcts_decisions", ["attack", "spree", "deploy", "fortify"]))
 
     sim: Simulator = w["sim"]
     mcts_history = w["mcts_history"]
@@ -309,6 +321,7 @@ def _run_calibration_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
                 mcts_breadth=m_breadth,
                 placement_distribute=placement_distribute,
                 placement_softmax_temp=placement_softmax_temp,
+                mcts_decisions=mcts_decisions,
             )
         except MaxStepsTimeout:
             max_steps_restarts += 1
@@ -373,6 +386,7 @@ def _run_calibration_serial(
     m_breadth: int,
     placement_distribute: str,
     placement_softmax_temp: float,
+    mcts_decisions: frozenset[str],
     progress_every: int,
     seat_wins: List[int],
     type_wins: Dict[str, int],
@@ -404,6 +418,7 @@ def _run_calibration_serial(
                 mcts_breadth=m_breadth,
                 placement_distribute=placement_distribute,
                 placement_softmax_temp=placement_softmax_temp,
+                mcts_decisions=mcts_decisions,
             )
         except MaxStepsTimeout as e:
             max_steps_restarts += 1
@@ -612,6 +627,16 @@ def main() -> None:
         metavar="T",
         help="Softmax temperature when --placement-distribute=softmax. Default: 1.0.",
     )
+    ap.add_argument(
+        "--mcts-decisions",
+        default="full",
+        metavar="SPEC",
+        help=(
+            "Which Mctsland decision types use trained logic: "
+            "full | none | exclude_attack | include_attack,include_spree. "
+            "Types: attack, spree, deploy, fortify. Default: full."
+        ),
+    )
     args = ap.parse_args()
     full_attack = bool(args.full_attack) and not bool(args.one_round_only)
 
@@ -627,6 +652,15 @@ def main() -> None:
     m_rollout: RolloutKind = "uniform" if args.mcts_rollout == "uniform" else "rookie"
     m_depth = max(1, int(args.mcts_depth))
     m_breadth = max(1, int(args.mcts_breadth))
+
+    from mcts_train.players.mctsland_bot_player import parse_mcts_decisions
+
+    try:
+        mcts_decisions = parse_mcts_decisions(args.mcts_decisions)
+    except ValueError as e:
+        ap.error(str(e))
+    mcts_decisions_list = sorted(mcts_decisions)
+    mcts_decisions_label = "none" if not mcts_decisions else ",".join(mcts_decisions_list)
 
     try:
         n_bots, base_seat_types = parse_bots_spec(args.bots)
@@ -683,6 +717,7 @@ def main() -> None:
 
     max_steps = default_max_steps(n_bots)
     print("max_steps", max_steps, "per match (outer iterations)")
+    print("mcts_decisions", mcts_decisions_label)
     target_matches = int(args.matches)
     progress_every = int(args.progress_every)
     last_result: Optional[RolloutResult] = None
@@ -703,6 +738,7 @@ def main() -> None:
         mcts_breadth=m_breadth,
         mcts_rollout=str(args.mcts_rollout),
         mcts_use_history_prior=m_prior,
+        mcts_decisions=mcts_decisions_list,
         full_attack=full_attack,
     )
 
@@ -787,6 +823,7 @@ def main() -> None:
                 m_breadth=m_breadth,
                 placement_distribute=str(args.placement_distribute),
                 placement_softmax_temp=float(args.placement_softmax_temp),
+                mcts_decisions=mcts_decisions,
                 progress_every=progress_every,
                 seat_wins=seat_wins,
                 type_wins=type_wins,
@@ -832,6 +869,7 @@ def main() -> None:
             "mcts_history_path": hist_path_str,
             "placement_distribute": str(args.placement_distribute),
             "placement_softmax_temp": float(args.placement_softmax_temp),
+            "mcts_decisions": mcts_decisions_list,
         }
 
         chunk_args_list: List[Dict[str, Any]] = []
