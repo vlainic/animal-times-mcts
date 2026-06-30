@@ -80,6 +80,19 @@ Called by `MctslandBotPlayer` at ATTACK when `mcts_iterations > 0`.
 - Selfplay: `--save-every K` flushes JSON every K completed matches (parallel and serial)
 - Calibrate: `--progress-every K` prints and checkpoints every K completed matches to `data/mcts_calibration.json` (resume on re-run; `--fresh` to reset)
 
+## Decision-type ablation (calibrate)
+
+`--mcts-decisions SPEC` on `mcts_calibrate.py` only (plumbed via `run_one_rollout(..., mcts_decisions=...)`):
+
+| Spec | Effect |
+|------|--------|
+| `full` (default) | attack + spree + deploy + fortify use Mctsland logic |
+| `none` | all four → Rookie delegate |
+| `exclude_attack` | all except attack |
+| `include_attack,include_spree` | only listed types |
+
+`parse_mcts_decisions()` in `mctsland_bot_player.py`; `MctslandBotPlayer.mcts_decisions: frozenset`. REINFORCE not ablated.
+
 ## Game driver caps
 
 Smoke, selfplay, and calibrate share `rollout_limits.default_max_steps(n_bots)` = **`max(400, 100 * n_bots)`** outer seat handoffs per match; timeout → restart (selfplay/calibrate) or fail (smoke).

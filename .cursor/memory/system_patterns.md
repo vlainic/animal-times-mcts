@@ -2652,5 +2652,6 @@ func sync_territory_units(territory_name: String, new_unit_count: int):
   - **FORTIFY**: one-shot per turn — bulk strip to hub + 6-tuple UCB distribute per cluster; bulk ``MoveUnits``.
   - **ATTACK**: attack MCTS; spree MCTS for chain; both stop/continue logged. Needs ``combat_one_round_only=False``.
   - **History**: nested ``attack`` / ``spree`` / ``deploy`` / ``fortify``; ``ensure_history_bundle`` for training; worker merge in-place.
+  - **Ablation** (``mcts_calibrate.py``): ``--mcts-decisions`` → ``parse_mcts_decisions`` → ``MctslandBotPlayer.mcts_decisions``; disabled types use Rookie ``_attack`` / ``_deploy`` / ``_fortify``; REINFORCE always Mctsland cascade.
 - **Keys**: attack 7-tuple; spree 5-tuple; deploy 2-tuple ``(fortify_decile, att_units)`` max 50; fortify 6-tuple.
 - **Self-play** ``scripts/mcts_selfplay.py``: writes nested JSON to ``data/``; default full-attack; worker history merge fix.

@@ -84,6 +84,7 @@ REINFORCE → ATTACK → DEPLOY → FORTIFY → (next player) → GAME_OVER
 - DEPLOY / FORTIFY → one-shot UCB distribute (`linear`|`softmax` via `--placement-distribute`, default **softmax**); bulk strip+place per fortify cluster; no placement MCTS
 - ATTACK → `run_mcts_attack`; post-conquest → `run_mcts_spree` (`EndAttack` vs continue)
 - Else legacy UCB1 bandit when `mcts_iterations == 0`
+- **`mcts_decisions`** (`frozenset`, default all four): per-type ablation — disabled types delegate to Rookie (`_attack` / `_deploy` / `_fortify`; spree off → Rookie post-conquest attack). Parsed via `parse_mcts_decisions()`; calibration CLI only (`--mcts-decisions`)
 - History JSON: nested `attack` / `spree` / `deploy` / `fortify` tables (legacy flat → `attack` only; legacy `placement` ignored)
 - Attack key 7-tuple; spree key 5-tuple; deploy key 2-tuple `(fortify_decile, att_units)` — decile from per-turn fortify UCB rank among legal DEPLOY dests (1..10 × att_units 1..5, max 50); fortify key 6-tuple `(def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)`
 - Training: `notify_game_over` increments visits/wins per logged key (whole-game win)
@@ -94,12 +95,14 @@ REINFORCE → ATTACK → DEPLOY → FORTIFY → (next player) → GAME_OVER
 |--------|---------|
 | `scripts/smoke_rollout.py` | Quick mixed-bot games (`--bots` pattern: `1`=Rookie, `2`=Mctsland, `4`=…) |
 | `scripts/mcts_selfplay.py` | Training runs → `data/mctsland_history_*.json` |
-| `scripts/mcts_calibrate.py` | Eval / calibration with same MCTS flags |
+| `scripts/mcts_calibrate.py` | Eval / calibration with same MCTS flags + `--mcts-decisions` ablation |
 | `scripts/mcts_search_smoke.py` | Legality / search smoke check |
 
 ### Common CLI Flags
 `--mcts-iterations`, `--mcts-depth`, `--mcts-breadth`, `--mcts-rollout` (`uniform`|`rookie`),
 `--mcts-no-history-prior`, `--mcts-bandit-only`, `--mcts-history PATH`, `--placement-distribute`, `--placement-softmax-temp`, `--workers`, `--matches`, `--save-every`
+
+**Calibrate-only ablation:** `--mcts-decisions` — `full` | `none` | `exclude_<type>` | `include_<type>,…` (types: attack, spree, deploy, fortify). `none` = Rookie on all four; distinct from `--mcts-bandit-only` (UCB still on). Checkpoint stores `config.mcts_decisions`; use `--fresh` per experiment arm.
 
 ### Rollout driver caps (`mcts_train/rollout_limits.py`)
 - Outer match cap: `default_max_steps(n_bots)` = **`max(500, 100 * n_bots)`** seat handoffs (smoke / selfplay / calibrate)

@@ -15,9 +15,9 @@
   - **MctslandBotPlayer**: REINFORCE = Rookie top-3 cascade; **DEPLOY** = one-shot fortify-decile + deploy 2-tuple UCB distribute (default softmax); **FORTIFY** = bulk strip + one-shot 6-tuple UCB distribute; ATTACK = **attack MCTS** + **spree MCTS**. ``--mcts-bandit-only`` / ``iterations=0`` = UCB1 bandit per table. ``--placement-distribute linear|softmax``, ``--placement-softmax-temp``.
   - **Nested history JSON**: ``{ "attack": {...}, "spree": {...}, "deploy": {...}, "fortify": {...} }``; legacy ``placement`` and 7-field deploy keys ignored on load.
   - **MCTS entrypoints** (`mcts_search.py`): ``run_mcts_attack``, ``run_mcts_spree`` (placement MCTS removed from bot path).
-  - **CLI** (selfplay / smoke / calibrate): ``--mcts-iterations``, ``--mcts-depth``, ``--mcts-breadth``, ``--mcts-rollout``, ``--mcts-no-history-prior``, ``--mcts-bandit-only``, ``--mcts-history``, ``--placement-distribute``, ``--placement-softmax-temp``, **``--workers``**, ``--batch-size``, ``--save-every`` / ``--progress-every``.
+  - **CLI** (selfplay / smoke / calibrate): ``--mcts-iterations``, ``--mcts-depth``, ``--mcts-breadth``, ``--mcts-rollout``, ``--mcts-no-history-prior``, ``--mcts-bandit-only``, ``--mcts-history``, ``--placement-distribute``, ``--placement-softmax-temp``, **``--workers``**, ``--batch-size``, ``--save-every`` / ``--progress-every``. **Calibrate only**: ``--mcts-decisions`` (``full|none|exclude_<type>|include_<type>,…``) for per-table ablation vs Rookie baseline.
   - **`mcts_selfplay.py`**: default ``--full-attack`` (spree requires ``combat_one_round_only=False``); **`rollout_limits.py`** dynamic micro-step cap; **`smoke_rollout.py`** failure dumps to ``logs/``.
-  - **`mcts_calibrate.py`**, **`mcts_search_smoke.py`**.
+  - **`mcts_calibrate.py`**, **`mcts_search_smoke.py`**. Ablation: ``parse_mcts_decisions``, ``MctslandBotPlayer.mcts_decisions``, checkpoint field ``config.mcts_decisions``.
   - **``.gitignore``**: ``__pycache__/``, ``*.py[cod]``; bytecode untracked from repo.
   - **Parallel execution**: ``--workers W`` (0=all CPUs); ``--batch-size`` per task (default 1); selfplay saves at ``--save-every`` milestones; calibrate checkpoints ``data/mcts_calibration.json`` at ``--progress-every``.
   - **`load_history_from_json`**, **`from_history_file`** for inference.
