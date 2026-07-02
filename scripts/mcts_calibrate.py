@@ -18,10 +18,15 @@ history is read-only (no training writes).
     python3 scripts/mcts_calibrate.py --bots 1222 --matches 200 --mcts-decisions exclude_attack
     python3 scripts/mcts_calibrate.py --bots 1222 --matches 200 \\
         --mcts-decisions include_attack,include_spree
+    python3 scripts/mcts_calibrate.py --bots 1222 --matches 200 \\
+        --mcts-decisions include_fortify --fortify-placement sequential --fresh
 
 **Decision-type ablation:** ``--mcts-decisions`` toggles which Mctsland types use trained
 logic (attack, spree, deploy, fortify) vs Rookie fallback. ``full`` (default) enables all four;
 ``none`` disables all; ``exclude_<type>`` / ``include_<type>`` comma tokens for partial ablation.
+
+**Fortify placement:** ``--fortify-placement oneshot`` (default) bulk UCB distribute per cluster;
+``sequential`` places one army per action with re-scored UCB.
 
 **Calibration protocol:** compare ``type wins`` at fixed ``--matches`` when toggling ``--mcts-iterations``,
 ``--mcts-depth``, ``--mcts-breadth``, or ``--mcts-rollout`` (``uniform`` vs ``rookie``).
@@ -135,6 +140,7 @@ def _calibration_config_snapshot(
     mcts_rollout: str,
     mcts_use_history_prior: bool,
     mcts_decisions: List[str],
+    fortify_placement: str,
     full_attack: bool,
 ) -> Dict[str, Any]:
     return {
@@ -148,6 +154,7 @@ def _calibration_config_snapshot(
         "mcts_rollout": mcts_rollout,
         "mcts_use_history_prior": mcts_use_history_prior,
         "mcts_decisions": mcts_decisions,
+        "fortify_placement": fortify_placement,
         "full_attack": full_attack,
     }
 
@@ -291,6 +298,7 @@ def _run_calibration_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     placement_distribute = str(w.get("placement_distribute", "softmax"))
     placement_softmax_temp = float(w.get("placement_softmax_temp", 1.0))
     mcts_decisions = frozenset(w.get("mcts_decisions", ["attack", "spree", "deploy", "fortify"]))
+    fortify_placement = str(w.get("fortify_placement", "oneshot"))
 
     sim: Simulator = w["sim"]
     mcts_history = w["mcts_history"]
@@ -322,6 +330,7 @@ def _run_calibration_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
                 placement_distribute=placement_distribute,
                 placement_softmax_temp=placement_softmax_temp,
                 mcts_decisions=mcts_decisions,
+                fortify_placement=fortify_placement,
             )
         except MaxStepsTimeout:
             max_steps_restarts += 1
@@ -387,6 +396,7 @@ def _run_calibration_serial(
     placement_distribute: str,
     placement_softmax_temp: float,
     mcts_decisions: frozenset[str],
+    fortify_placement: str,
     progress_every: int,
     seat_wins: List[int],
     type_wins: Dict[str, int],
@@ -419,6 +429,7 @@ def _run_calibration_serial(
                 placement_distribute=placement_distribute,
                 placement_softmax_temp=placement_softmax_temp,
                 mcts_decisions=mcts_decisions,
+                fortify_placement=fortify_placement,
             )
         except MaxStepsTimeout as e:
             max_steps_restarts += 1
@@ -637,6 +648,15 @@ def main() -> None:
             "Types: attack, spree, deploy, fortify. Default: full."
         ),
     )
+    ap.add_argument(
+        "--fortify-placement",
+        choices=("oneshot", "sequential"),
+        default="oneshot",
+        help=(
+            "Mctsland FORTIFY: oneshot UCB bulk distribute (default) or "
+            "sequential one army per action."
+        ),
+    )
     args = ap.parse_args()
     full_attack = bool(args.full_attack) and not bool(args.one_round_only)
 
@@ -661,6 +681,7 @@ def main() -> None:
         ap.error(str(e))
     mcts_decisions_list = sorted(mcts_decisions)
     mcts_decisions_label = "none" if not mcts_decisions else ",".join(mcts_decisions_list)
+    fortify_placement = str(args.fortify_placement)
 
     try:
         n_bots, base_seat_types = parse_bots_spec(args.bots)
@@ -718,6 +739,7 @@ def main() -> None:
     max_steps = default_max_steps(n_bots)
     print("max_steps", max_steps, "per match (outer iterations)")
     print("mcts_decisions", mcts_decisions_label)
+    print("fortify_placement", fortify_placement)
     target_matches = int(args.matches)
     progress_every = int(args.progress_every)
     last_result: Optional[RolloutResult] = None
@@ -739,6 +761,7 @@ def main() -> None:
         mcts_rollout=str(args.mcts_rollout),
         mcts_use_history_prior=m_prior,
         mcts_decisions=mcts_decisions_list,
+        fortify_placement=fortify_placement,
         full_attack=full_attack,
     )
 
@@ -824,6 +847,7 @@ def main() -> None:
                 placement_distribute=str(args.placement_distribute),
                 placement_softmax_temp=float(args.placement_softmax_temp),
                 mcts_decisions=mcts_decisions,
+                fortify_placement=fortify_placement,
                 progress_every=progress_every,
                 seat_wins=seat_wins,
                 type_wins=type_wins,
@@ -870,6 +894,7 @@ def main() -> None:
             "placement_distribute": str(args.placement_distribute),
             "placement_softmax_temp": float(args.placement_softmax_temp),
             "mcts_decisions": mcts_decisions_list,
+            "fortify_placement": fortify_placement,
         }
 
         chunk_args_list: List[Dict[str, Any]] = []

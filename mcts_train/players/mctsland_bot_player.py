@@ -3,9 +3,10 @@ Mctsland bot — attack decisions from historical visit/win stats; other phases 
 
 **Non-attack phases**
 
-DEPLOY and FORTIFY use **one-shot placement**: UCB scores all destination tiles once, then
+DEPLOY and FORTIFY use **one-shot placement** by default (``fortify_placement="oneshot"``): UCB scores all destination tiles once, then
 allocate all pending units via linear or softmax sampling (bulk ``DeployPlace`` /
-``MoveUnits``). FORTIFY bulk-strips each cluster to a hub, then distributes the pool.
+``MoveUnits``). FORTIFY can alternatively use ``fortify_placement="sequential"`` — one army
+per ``choose_action`` with re-scored UCB after each move. FORTIFY bulk-strips each cluster to a hub, then distributes the pool.
 Attack uses ephemeral MCTS (:func:`~mcts_train.mcts_search.run_mcts_attack`).
 **REINFORCE** ranks attack options like Rookie, then
 **cascades** consolidation across the top **3** distinct attacker tiles (by weight): fill #1 to
@@ -199,6 +200,19 @@ DEFAULT_HISTORY: HistoryBundle = {
 CONNECTIVITY_ALL_CAP = 5
 CONNECTIVITY_MISSION_CAP = 4
 PlacementDistributeKind = Literal["linear", "softmax"]
+FortifyPlacementKind = Literal["oneshot", "sequential"]
+
+
+def parse_fortify_placement(spec: str) -> FortifyPlacementKind:
+    """Parse ``oneshot`` (default bulk distribute) or ``sequential`` (one army per action)."""
+    raw = str(spec).strip().lower()
+    if raw in ("oneshot", "one-shot", "one_shot"):
+        return "oneshot"
+    if raw == "sequential":
+        return "sequential"
+    raise ValueError(
+        f"invalid fortify_placement {spec!r}: expected 'oneshot' or 'sequential'"
+    )
 
 
 def _distribute_units(
@@ -594,8 +608,9 @@ class MctslandBotPlayer:
         mcts_use_history_prior: If true, root-edge priors from ``history`` when expanding.
         mcts_depth: Max rollout ``apply`` steps per simulation (CLI ``--mcts-depth``).
         mcts_breadth: Max children expanded per tree node (CLI ``--mcts-breadth``).
-        placement_distribute: ``linear`` or ``softmax`` weights for one-shot DEPLOY/FORTIFY.
+        placement_distribute: ``linear`` or ``softmax`` weights for one-shot DEPLOY/FORTIFY distribute.
         placement_softmax_temp: Temperature when ``placement_distribute == "softmax"``.
+        fortify_placement: ``oneshot`` bulk UCB distribute (default) or ``sequential`` one army per action.
         mcts_decisions: Enabled decision types (attack/spree/deploy/fortify); others use Rookie.
         _rookie: Rookie delegate for shared reinforce attack planning.
         _episode_decisions: ``(table, key_str, seat)`` for each logged decision this game.
@@ -613,6 +628,7 @@ class MctslandBotPlayer:
     mcts_breadth: int = DEFAULT_MCTS_BREADTH  # CLI: --mcts-breadth
     placement_distribute: PlacementDistributeKind = "softmax"
     placement_softmax_temp: float = 1.0
+    fortify_placement: FortifyPlacementKind = "oneshot"
     mcts_decisions: frozenset[str] = ALL_MCTS_DECISIONS
     _rookie: RookieBotPlayer = field(init=False, repr=False)
     _episode_decisions: List[Tuple[str, str, int]] = field(default_factory=list, repr=False)
@@ -621,6 +637,9 @@ class MctslandBotPlayer:
     _consolidate_idx: int = field(default=0, init=False, repr=False)
     _fortify_pending_clusters: Optional[List[Set[int]]] = field(default=None, init=False, repr=False)
     _fortify_clusters_total: int = field(default=0, init=False, repr=False)
+    _fortify_active_cluster: Optional[Set[int]] = field(default=None, init=False, repr=False)
+    _fortify_hub: Optional[int] = field(default=None, init=False, repr=False)
+    _fortify_pool_remaining: int = field(default=0, init=False, repr=False)
     _placement_cache: Optional[Dict[int, Tuple[Action, str, float]]] = field(
         default=None, init=False, repr=False
     )
@@ -638,6 +657,11 @@ class MctslandBotPlayer:
             )
         if self.placement_softmax_temp <= 0:
             raise ValueError("placement_softmax_temp must be > 0")
+        if self.fortify_placement not in ("oneshot", "sequential"):
+            raise ValueError(
+                f"fortify_placement must be 'oneshot' or 'sequential', "
+                f"got {self.fortify_placement!r}"
+            )
         if not self.mcts_decisions.issubset(ALL_MCTS_DECISIONS):
             bad = self.mcts_decisions - ALL_MCTS_DECISIONS
             raise ValueError(f"invalid mcts_decisions entries: {sorted(bad)}")
@@ -663,6 +687,7 @@ class MctslandBotPlayer:
         mcts_breadth: int = DEFAULT_MCTS_BREADTH,
         placement_distribute: PlacementDistributeKind = "softmax",
         placement_softmax_temp: float = 1.0,
+        fortify_placement: FortifyPlacementKind = "oneshot",
         mcts_decisions: frozenset[str] = ALL_MCTS_DECISIONS,
     ) -> "MctslandBotPlayer":
         """
@@ -684,8 +709,14 @@ class MctslandBotPlayer:
             mcts_breadth=mcts_breadth,
             placement_distribute=placement_distribute,
             placement_softmax_temp=placement_softmax_temp,
+            fortify_placement=fortify_placement,
             mcts_decisions=mcts_decisions,
         )
+
+    def _clear_fortify_sequential(self) -> None:
+        self._fortify_active_cluster = None
+        self._fortify_hub = None
+        self._fortify_pool_remaining = 0
 
     def reset_for_new_turn(self) -> None:
         """Clear Rookie turn state and chain anchor when the active seat changes."""
@@ -695,6 +726,7 @@ class MctslandBotPlayer:
         self._consolidate_idx = 0
         self._fortify_pending_clusters = None
         self._fortify_clusters_total = 0
+        self._clear_fortify_sequential()
         self._clear_placement_cache()
 
     def reset_for_new_game(self) -> None:
@@ -706,6 +738,7 @@ class MctslandBotPlayer:
         self._consolidate_idx = 0
         self._fortify_pending_clusters = None
         self._fortify_clusters_total = 0
+        self._clear_fortify_sequential()
         self._clear_placement_cache()
 
     def _clear_placement_cache(self) -> None:
@@ -1352,22 +1385,21 @@ class MctslandBotPlayer:
         self._fortify_pending_clusters = clusters
         self._fortify_clusters_total = len(clusters)
 
-    def _fortify_one_cluster(
+    def _fortify_strip_cluster(
         self,
         state: GameState,
         m: MapData,
         cluster: Set[int],
-        rng: np.random.Generator,
         *,
         clabel: str,
-    ) -> None:
-        """Bulk strip to hub, then one-shot distribute pool across cluster destinations."""
+    ) -> Optional[Tuple[int, int]]:
+        """Bulk strip ``cluster`` to hub; return ``(hub, pool_size)`` or ``None`` if empty pool."""
         hub = self._fortify_pick_hub(cluster)
         pool_size = self._fortify_pool_size(state, cluster)
         tiles = self._fortify_cluster_tiles_snap(state, m, cluster)
         if pool_size <= 0:
             self._log_fortify(state, f"{clabel} start pool=0 skip tiles={tiles}")
-            return
+            return None
         hub_name = m.territory_names[hub]
         self._log_fortify(
             state,
@@ -1379,6 +1411,20 @@ class MctslandBotPlayer:
             state,
             f"{clabel} strip_done pool={pool_size} hub_units={int(state.units[hub])}",
         )
+        return hub, pool_size
+
+    def _fortify_place_oneshot_cluster(
+        self,
+        state: GameState,
+        m: MapData,
+        cluster: Set[int],
+        hub: int,
+        pool_size: int,
+        rng: np.random.Generator,
+        *,
+        clabel: str,
+    ) -> None:
+        """One-shot UCB distribute ``pool_size`` armies across cluster destinations."""
         arms = self._fortify_place_arms(state, m, cluster, hub)
         if not arms:
             self._log_fortify(state, f"{clabel} place_stuck pool={pool_size}")
@@ -1409,13 +1455,129 @@ class MctslandBotPlayer:
         self._clear_placement_cache()
         self._log_fortify(state, f"{clabel} cluster_done pool={pool_size}")
 
+    def _fortify_pick_one_army(
+        self,
+        state: GameState,
+        m: MapData,
+        cluster: Set[int],
+        hub: int,
+        rng: np.random.Generator,
+        *,
+        clabel: str,
+    ) -> Optional[MoveUnits]:
+        """Score UCB on current board, sample one army; caller applies the returned move."""
+        self._clear_placement_cache()
+        arms = self._fortify_place_arms(state, m, cluster, hub)
+        if not arms:
+            self._log_fortify(state, f"{clabel} place_stuck pool={self._fortify_pool_remaining}")
+            return None
+        scores = self._placement_scores(
+            state,
+            m,
+            arms,
+            table=HISTORY_FORTIFY,
+            build_key=self._build_fortify_key,
+        )
+        counts = _distribute_units(
+            scores,
+            1,
+            rng,
+            mode=self.placement_distribute,
+            temperature=self.placement_softmax_temp,
+        )
+        if not counts:
+            self._log_fortify(state, f"{clabel} place_stuck pool={self._fortify_pool_remaining}")
+            return None
+        dst = next(iter(counts))
+        src = self._fortify_src_for_dst(state, m, cluster, hub, dst, 1)
+        if src is None:
+            self._log_fortify(
+                state,
+                f"{clabel} place_stuck no_src dst={m.territory_names[dst]}",
+            )
+            return None
+        self._record_fortify_dest(state, m, dst, 1)
+        self._log_fortify(
+            state,
+            f"{clabel} sequential pick pool_rem={self._fortify_pool_remaining} "
+            f"dst={m.territory_names[dst]}",
+        )
+        return MoveUnits(src, dst, 1)
+
+    def _fortify_one_cluster(
+        self,
+        state: GameState,
+        m: MapData,
+        cluster: Set[int],
+        rng: np.random.Generator,
+        *,
+        clabel: str,
+    ) -> None:
+        """Bulk strip to hub, then one-shot distribute pool across cluster destinations."""
+        stripped = self._fortify_strip_cluster(state, m, cluster, clabel=clabel)
+        if stripped is None:
+            return
+        hub, pool_size = stripped
+        self._fortify_place_oneshot_cluster(
+            state, m, cluster, hub, pool_size, rng, clabel=clabel
+        )
+
+    def _fortify_cluster_label(self, pending_after_pop: int) -> str:
+        total = self._fortify_clusters_total
+        idx = total - pending_after_pop
+        return f"cluster={idx}/{total}" if total > 0 else "cluster=?"
+
+    def _fortify_sequential_step(
+        self, state: GameState, m: MapData, rng: np.random.Generator
+    ) -> Action:
+        """One army per ``choose_action`` after cluster strip; re-score UCB each pick."""
+        while True:
+            if self._fortify_active_cluster is None:
+                if self._fortify_pending_clusters is None:
+                    self._init_fortify_clusters(state, m)
+                pending = self._fortify_pending_clusters or []
+                if not pending:
+                    total = self._fortify_clusters_total
+                    self._fortify_pending_clusters = []
+                    self._log_fortify(state, f"EndFortify clusters_done={total}")
+                    return EndFortify()
+                cluster = pending.pop(0)
+                clabel = self._fortify_cluster_label(len(pending))
+                stripped = self._fortify_strip_cluster(state, m, cluster, clabel=clabel)
+                if stripped is None:
+                    continue
+                hub, pool_size = stripped
+                self._fortify_active_cluster = cluster
+                self._fortify_hub = hub
+                self._fortify_pool_remaining = pool_size
+
+            if self._fortify_pool_remaining <= 0:
+                self._clear_fortify_sequential()
+                continue
+
+            cluster = self._fortify_active_cluster
+            hub = self._fortify_hub
+            assert cluster is not None and hub is not None
+            pending_n = len(self._fortify_pending_clusters or [])
+            clabel = self._fortify_cluster_label(pending_n)
+            mv = self._fortify_pick_one_army(state, m, cluster, hub, rng, clabel=clabel)
+            if mv is None:
+                self._clear_fortify_sequential()
+                continue
+            self._fortify_pool_remaining -= 1
+            if self._fortify_pool_remaining <= 0:
+                self._clear_fortify_sequential()
+            return mv
+
     def _fortify(self, state: GameState, m: MapData, rng: np.random.Generator) -> Action:
         """
-        One ``choose_action``: bulk strip + one-shot place for every pending cluster,
-        then ``EndFortify`` (all ``MoveUnits`` applied internally).
+        FORTIFY placement: ``oneshot`` finishes in one ``choose_action``; ``sequential`` returns
+        one ``MoveUnits`` per call until ``EndFortify``.
         """
         if HISTORY_FORTIFY not in self.mcts_decisions:
             return self._rookie._fortify(state, m, rng)
+        if self.fortify_placement == "sequential":
+            return self._fortify_sequential_step(state, m, rng)
         if self._fortify_pending_clusters is None:
             self._init_fortify_clusters(state, m)
         pending = self._fortify_pending_clusters or []

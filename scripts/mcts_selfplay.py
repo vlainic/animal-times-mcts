@@ -207,6 +207,7 @@ def run_one_match(
     mcts_breadth: int,
     placement_distribute: str = "softmax",
     placement_softmax_temp: float = 1.0,
+    fortify_placement: str = "oneshot",
 ) -> Optional[int]:
     """
     Play one game; backprop attack stats on all bots. Returns winner seat.
@@ -230,6 +231,7 @@ def run_one_match(
             mcts_breadth=mcts_breadth,
             placement_distribute=placement_distribute,
             placement_softmax_temp=placement_softmax_temp,
+            fortify_placement=fortify_placement,
         )
         for s in range(n_bots)
     ]
@@ -306,6 +308,7 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     m_breadth = int(w["mcts_breadth"])
     placement_distribute = str(w.get("placement_distribute", "softmax"))
     placement_softmax_temp = float(w.get("placement_softmax_temp", 1.0))
+    fortify_placement = str(w.get("fortify_placement", "oneshot"))
 
     sim: Simulator = w["sim"]
     history = copy.deepcopy(w["initial_history"])
@@ -329,6 +332,7 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
                 mcts_breadth=m_breadth,
                 placement_distribute=placement_distribute,
                 placement_softmax_temp=placement_softmax_temp,
+                fortify_placement=fortify_placement,
             )
         except MatchStuck:
             stuck_restarts += 1
@@ -462,6 +466,15 @@ def main() -> None:
         help="Softmax temperature when --placement-distribute=softmax. Default: 1.0.",
     )
     ap.add_argument(
+        "--fortify-placement",
+        choices=("oneshot", "sequential"),
+        default="oneshot",
+        help=(
+            "Mctsland FORTIFY: oneshot UCB bulk distribute (default) or "
+            "sequential one army per action."
+        ),
+    )
+    ap.add_argument(
         "--full-attack",
         action="store_true",
         default=True,
@@ -523,6 +536,7 @@ def main() -> None:
                     mcts_breadth=m_breadth,
                     placement_distribute=str(args.placement_distribute),
                     placement_softmax_temp=float(args.placement_softmax_temp),
+                    fortify_placement=str(args.fortify_placement),
                 )
             except MatchStuck as e:
                 stuck_restarts += 1
@@ -577,6 +591,7 @@ def main() -> None:
             "full_attack": full_attack,
             "placement_distribute": str(args.placement_distribute),
             "placement_softmax_temp": float(args.placement_softmax_temp),
+            "fortify_placement": str(args.fortify_placement),
         }
 
         chunk_args_list: List[Dict[str, Any]] = []

@@ -286,6 +286,7 @@ def _make_bot(
     placement_distribute: str = "softmax",
     placement_softmax_temp: float = 1.0,
     mcts_decisions=None,
+    fortify_placement: str = "oneshot",
 ) -> Any:
     """Construct one seat's bot. ``type_id`` 1 = Rookie, 2 = Mctsland (optional module)."""
     if type_id == 1:
@@ -317,6 +318,7 @@ def _make_bot(
             placement_distribute=placement_distribute,
             placement_softmax_temp=placement_softmax_temp,
             mcts_decisions=mcts_decisions,
+            fortify_placement=fortify_placement,
         )
     raise ValueError(f"internal: unsupported bot type_id {type_id}")
 
@@ -339,6 +341,7 @@ def run_one_rollout(
     placement_distribute: str = "softmax",
     placement_softmax_temp: float = 1.0,
     mcts_decisions=None,
+    fortify_placement: str = "oneshot",
 ) -> RolloutResult:
     """
     Play one full game; return winner seat and final state.
@@ -368,6 +371,7 @@ def run_one_rollout(
             placement_distribute=placement_distribute,
             placement_softmax_temp=placement_softmax_temp,
             mcts_decisions=mcts_decisions,
+            fortify_placement=fortify_placement,
         )
         for s in range(n_bots)
     }
@@ -688,6 +692,15 @@ def main() -> None:
         metavar="T",
         help="Softmax temperature when --placement-distribute=softmax. Default: 1.0.",
     )
+    ap.add_argument(
+        "--fortify-placement",
+        choices=("oneshot", "sequential"),
+        default="oneshot",
+        help=(
+            "Mctsland FORTIFY: oneshot UCB bulk distribute (default) or "
+            "sequential one army per action."
+        ),
+    )
     args = ap.parse_args()
     try:
         n_bots, seat_types = parse_bots_spec(args.bots)
@@ -753,6 +766,7 @@ def main() -> None:
             mcts_breadth=m_breadth,
             placement_distribute=str(args.placement_distribute),
             placement_softmax_temp=float(args.placement_softmax_temp),
+            fortify_placement=str(args.fortify_placement),
         )
     except RolloutFailure as e:
         exit_code = 1
