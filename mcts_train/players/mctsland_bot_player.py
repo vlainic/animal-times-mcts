@@ -63,12 +63,14 @@ above anchor).
 **Deploy state key** (DEPLOY, 2-tuple, max 50)
 
 ``(fortify_decile, att_units)`` where ``fortify_decile`` is 1..10 from **this turn's** legal
-``DeployPlace`` dests ranked by fortify-table UCB1 (6-tuple lookup each); ``att_units`` is
+``DeployPlace`` dests ranked by fortify-table UCB1 (4-tuple lookup each); ``att_units`` is
 ``min(units[t], 5)``. Not a global history percentile.
 
-**Fortify state key** (FORTIFY place after strip, 6-tuple — no ``att_units``; dest is always min 1)
+**Fortify state key** (FORTIFY place after strip, 4-tuple — no ``att_units``; dest is always min 1)
 
-``(def_neighbor_max, is_mission, is_card, att_cont, connectivity_all, connectivity_mission)``
+``(def_neighbor_max, is_mission, is_card, att_cont)`` — max **80** states
+(``5×2×2×4``). ``connectivity_all`` / ``connectivity_mission`` helpers remain in code but
+are omitted from the key.
 
 **History JSON**
 
@@ -290,6 +292,39 @@ def fortify_deciles_for_scores(fortify_scores: Dict[int, float]) -> Dict[int, in
     return out
 
 
+def _fortify_key_field_count(key_str: str) -> int:
+    inner = key_str.strip()
+    if inner.startswith("(") and inner.endswith(")"):
+        inner = inner[1:-1]
+    if not inner:
+        return 0
+    return len([p for p in inner.split(",") if p.strip()])
+
+
+def _parse_fortify_history_table(raw: Any, *, warn: bool = False) -> HistoryTable:
+    """Load fortify table; skip legacy 6-field keys (connectivity suffix dropped)."""
+    table = _parse_history_table(raw)
+    legacy = 0
+    out: HistoryTable = {}
+    for k, v in table.items():
+        n_fields = _fortify_key_field_count(k)
+        if n_fields == 6:
+            legacy += 1
+            continue
+        if n_fields != 4:
+            if warn:
+                print(f"warning: skipping invalid fortify key field count {n_fields}: {k!r}")
+            continue
+        out[k] = v
+    if warn and legacy:
+        print(
+            "warning: ignored",
+            legacy,
+            "legacy 6-field fortify keys — retrain with 4-tuple keys",
+        )
+    return out
+
+
 def _deploy_key_field_count(key_str: str) -> int:
     inner = key_str.strip()
     if inner.startswith("(") and inner.endswith(")"):
@@ -466,7 +501,7 @@ def load_history_from_json(path: Path | str, *, warn: bool = True) -> HistoryBun
             HISTORY_ATTACK: _parse_history_table(raw.get(HISTORY_ATTACK, {})),
             HISTORY_SPREE: _parse_history_table(raw.get(HISTORY_SPREE, {})),
             HISTORY_DEPLOY: _parse_deploy_history_table(raw.get(HISTORY_DEPLOY, {}), warn=warn),
-            HISTORY_FORTIFY: _parse_history_table(raw.get(HISTORY_FORTIFY, {})),
+            HISTORY_FORTIFY: _parse_fortify_history_table(raw.get(HISTORY_FORTIFY, {}), warn=warn),
         }
     return {
         HISTORY_ATTACK: _parse_history_table(raw),
@@ -570,15 +605,15 @@ def str_to_deploy_key(s: str) -> Tuple[int, int]:
     return int(parts[0]), int(parts[1])
 
 
-def str_to_fortify_key(s: str) -> Tuple[int, int, int, int, int, int]:
-    """Parse fortify key string (6 fields)."""
+def str_to_fortify_key(s: str) -> Tuple[int, int, int, int]:
+    """Parse fortify key string (4 fields; legacy 6-field accepted, connectivity suffix dropped)."""
     inner = s.strip()
     if inner.startswith("(") and inner.endswith(")"):
         inner = inner[1:-1]
     parts = [p.strip() for p in inner.split(",")]
-    if len(parts) != 6:
+    if len(parts) not in (4, 6):
         raise ValueError(f"invalid fortify key: {s!r}")
-    return tuple(int(p) for p in parts)  # type: ignore[return-value]
+    return tuple(int(p) for p in parts[:4])  # type: ignore[return-value]
 
 
 def ucb_rank_bucket(score: float, anchor: float) -> int:
@@ -968,25 +1003,6 @@ class MctslandBotPlayer:
         )
         return min(n, CONNECTIVITY_MISSION_CAP)
 
-    def _redistribute_key_tail(
-        self, state: GameState, m: MapData, t: int, cluster: Set[int]
-    ) -> Tuple[int, int, int, int, int, int]:
-        def_neighbor_max = min(self._max_enemy_neighbor_units(state, m, t), 4)
-        mission_bucket = _mission_bucket_for_tile(m, state, self.seat, t)
-        is_mission = 1 if mission_bucket > 0 else 0
-        is_card = 1 if self._hand_coin_kind_for_defender(state, t) > 0 else 0
-        att_cont = self._placement_att_cont(state, m, t)
-        connectivity_all = self._connectivity_all_other(cluster)
-        connectivity_mission = self._connectivity_mission_count(state, m, cluster)
-        return (
-            def_neighbor_max,
-            is_mission,
-            is_card,
-            att_cont,
-            connectivity_all,
-            connectivity_mission,
-        )
-
     def _build_deploy_key(
         self, state: GameState, m: MapData, t: int, *, decile: int
     ) -> Tuple[int, int]:
@@ -995,10 +1011,28 @@ class MctslandBotPlayer:
         att_units = min(int(state.units[t]), ATT_UNITS_CAP)
         return (int(decile), att_units)
 
+    def _redistribute_key_tail(
+        self, state: GameState, m: MapData, t: int, cluster: Set[int]
+    ) -> Tuple[int, int, int, int]:
+        """Fortify history key fields (connectivity computed but omitted from key)."""
+        self._connectivity_all_other(cluster)
+        self._connectivity_mission_count(state, m, cluster)
+        def_neighbor_max = min(self._max_enemy_neighbor_units(state, m, t), 4)
+        mission_bucket = _mission_bucket_for_tile(m, state, self.seat, t)
+        is_mission = 1 if mission_bucket > 0 else 0
+        is_card = 1 if self._hand_coin_kind_for_defender(state, t) > 0 else 0
+        att_cont = self._placement_att_cont(state, m, t)
+        return (
+            def_neighbor_max,
+            is_mission,
+            is_card,
+            att_cont,
+        )
+
     def _build_fortify_key(
         self, state: GameState, m: MapData, t: int
-    ) -> Tuple[int, int, int, int, int, int]:
-        """6-tuple fortify place key (post-strip; no ``att_units``)."""
+    ) -> Tuple[int, int, int, int]:
+        """4-tuple fortify place key (post-strip; no ``att_units``)."""
         cluster = self._own_cluster_bfs(state, m, t)
         return self._redistribute_key_tail(state, m, t, cluster)
 
@@ -1102,7 +1136,7 @@ class MctslandBotPlayer:
     def _fortify_ucb_scores_for_dests(
         self, state: GameState, m: MapData, dests: Set[int]
     ) -> Dict[int, float]:
-        """Fortify-table UCB1 per dest (6-tuple keys; total_visits over this turn's dests)."""
+        """Fortify-table UCB1 per dest (4-tuple keys; connectivity omitted)."""
         if not dests:
             return {}
         key_by_dest: Dict[int, str] = {}
