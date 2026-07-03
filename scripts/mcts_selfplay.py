@@ -9,6 +9,12 @@ Self-play training for Mctsland bots — accumulates visit/win stats in JSON.
     python3 scripts/mcts_selfplay.py --bots 4 --matches 200 --workers 8
     python3 scripts/mcts_selfplay.py --bots 4 --matches 10 \\
         --mcts-depth 5 --mcts-breadth 5
+    python3 scripts/mcts_selfplay.py --bots 4 --matches 200 --mcts-decisions include_fortify
+    python3 scripts/mcts_selfplay.py --bots 4 --matches 200 \\
+        --mcts-decisions include_fortify --fortify-placement sequential
+
+``--mcts-decisions`` toggles which decision types use Mctsland logic vs Rookie fallback
+(``full`` default, ``none``, ``exclude_<type>``, ``include_<type>``). REINFORCE unchanged.
 
 Each match draws missions from **all** pools (``mission_pool=\"all\"`` in ``Simulator.new_game``):
 conquest + elimination + special, shuffled together.
@@ -55,6 +61,7 @@ from mcts_train.players.mctsland_bot_player import (
     ensure_history_bundle,
     load_history_from_json,
     normalize_history,
+    parse_mcts_decisions,
     resolve_history_json_path,
     save_history_to_json,
 )
@@ -208,6 +215,7 @@ def run_one_match(
     placement_distribute: str = "softmax",
     placement_softmax_temp: float = 1.0,
     fortify_placement: str = "oneshot",
+    mcts_decisions=None,
 ) -> Optional[int]:
     """
     Play one game; backprop attack stats on all bots. Returns winner seat.
@@ -217,6 +225,10 @@ def run_one_match(
     """
     names = _SMOKE_PLAYER_NAMES[:n_bots]
     ensure_history_bundle(history)
+    if mcts_decisions is None:
+        from mcts_train.players.mctsland_bot_player import ALL_MCTS_DECISIONS
+
+        mcts_decisions = ALL_MCTS_DECISIONS
     state = sim.new_game(n_bots, names, mission_pool="all")
     bots: List[MctslandBotPlayer] = [
         MctslandBotPlayer(
@@ -232,6 +244,7 @@ def run_one_match(
             placement_distribute=placement_distribute,
             placement_softmax_temp=placement_softmax_temp,
             fortify_placement=fortify_placement,
+            mcts_decisions=mcts_decisions,
         )
         for s in range(n_bots)
     ]
@@ -309,6 +322,7 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     placement_distribute = str(w.get("placement_distribute", "softmax"))
     placement_softmax_temp = float(w.get("placement_softmax_temp", 1.0))
     fortify_placement = str(w.get("fortify_placement", "oneshot"))
+    mcts_decisions = frozenset(w.get("mcts_decisions", ["attack", "spree", "deploy", "fortify"]))
 
     sim: Simulator = w["sim"]
     history = copy.deepcopy(w["initial_history"])
@@ -333,6 +347,7 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
                 placement_distribute=placement_distribute,
                 placement_softmax_temp=placement_softmax_temp,
                 fortify_placement=fortify_placement,
+                mcts_decisions=mcts_decisions,
             )
         except MatchStuck:
             stuck_restarts += 1
@@ -475,6 +490,16 @@ def main() -> None:
         ),
     )
     ap.add_argument(
+        "--mcts-decisions",
+        default="full",
+        metavar="SPEC",
+        help=(
+            "Which Mctsland decision types use trained logic: "
+            "full | none | exclude_attack | include_attack,include_fortify. "
+            "Types: attack, spree, deploy, fortify. Default: full."
+        ),
+    )
+    ap.add_argument(
         "--full-attack",
         action="store_true",
         default=True,
@@ -500,6 +525,14 @@ def main() -> None:
     m_breadth = max(1, int(args.mcts_breadth))
     full_attack = bool(args.full_attack) and not bool(args.one_round_only)
 
+    try:
+        mcts_decisions = parse_mcts_decisions(args.mcts_decisions)
+    except ValueError as e:
+        ap.error(str(e))
+    mcts_decisions_label = (
+        "none" if not mcts_decisions else ",".join(sorted(mcts_decisions))
+    )
+
     if args.history is None:
         stamp = datetime.now().strftime("%y%m%d%H%M%S")
         history_path = (_HISTORY_DATA_DIR / f"mctsland_history_{stamp}.json").resolve()
@@ -508,6 +541,8 @@ def main() -> None:
     history = load_history(history_path)
     initial_attack, initial_spree, initial_deploy, initial_fortify = _history_key_counts(history)
     print("history file:", history_path)
+    print("mcts_decisions", mcts_decisions_label)
+    print("fortify_placement", str(args.fortify_placement))
 
     workers = _resolve_workers(int(args.workers))
     n_bots = int(args.bots)
@@ -537,6 +572,7 @@ def main() -> None:
                     placement_distribute=str(args.placement_distribute),
                     placement_softmax_temp=float(args.placement_softmax_temp),
                     fortify_placement=str(args.fortify_placement),
+                    mcts_decisions=mcts_decisions,
                 )
             except MatchStuck as e:
                 stuck_restarts += 1
@@ -592,6 +628,7 @@ def main() -> None:
             "placement_distribute": str(args.placement_distribute),
             "placement_softmax_temp": float(args.placement_softmax_temp),
             "fortify_placement": str(args.fortify_placement),
+            "mcts_decisions": sorted(mcts_decisions),
         }
 
         chunk_args_list: List[Dict[str, Any]] = []
