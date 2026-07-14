@@ -63,20 +63,16 @@ above anchor).
 **Deploy state key** (DEPLOY, 2-tuple, max 50)
 
 ``(fortify_decile, att_units)`` where ``fortify_decile`` is 1..10 from **this turn's** legal
-``DeployPlace`` dests ranked by fortify-table UCB1 (4- or 5-tuple lookup each); ``att_units`` is
+``DeployPlace`` dests ranked by fortify-table UCB1 (``def_neighbor_max`` lookup each); ``att_units`` is
 ``min(units[t], 5)``. Not a global history percentile.
 
 **Fortify state key** (FORTIFY place after strip)
 
-- **Oneshot** (4-tuple): ``(def_neighbor_max, mission_bucket, coin_kind, att_cont)`` — max **240**
-- **Sequential** (5-tuple): same four fields + ``dest_units`` = ``min(units[dst], 5)`` — max **1200**
+- **Oneshot** (1-tuple): ``(def_neighbor_max,)`` — max enemy units adjacent, **0..4** (``5`` states)
+- **Sequential** (2-tuple): ``(def_neighbor_max, a_curr)`` where ``a_curr`` =
+  ``min(units[dst], 5)`` (``1..5``) — max **25** states
 
-``mission_bucket`` is ``0`` / ``1`` / ``2`` (none / flexible / priority), same as attack —
-from :func:`~mcts_train.missions.mission_territory_values` on the destination tile.
-``coin_kind`` is ``0`` / ``1`` / ``2`` / ``3`` (none / saber / gun / cannon), same as attack —
-from :meth:`_hand_coin_kind_for_defender` on the destination tile.
-
-``connectivity_all`` / ``connectivity_mission`` helpers remain in code but are omitted from the key.
+Mission / coin / continent helpers remain in code but are omitted from the key.
 
 **History JSON**
 
@@ -308,25 +304,21 @@ def _fortify_key_field_count(key_str: str) -> int:
 
 
 def _parse_fortify_history_table(raw: Any, *, warn: bool = False) -> HistoryTable:
-    """Load fortify table; accept 4- or 5-field keys; skip legacy 6-field."""
+    """Load fortify table; accept 1- or 2-field keys; skip legacy longer keys."""
     table = _parse_history_table(raw)
-    legacy_6 = 0
+    legacy = 0
     out: HistoryTable = {}
     for k, v in table.items():
         n_fields = _fortify_key_field_count(k)
-        if n_fields == 6:
-            legacy_6 += 1
-            continue
-        if n_fields not in (4, 5):
-            if warn:
-                print(f"warning: skipping invalid fortify key field count {n_fields}: {k!r}")
+        if n_fields not in (1, 2):
+            legacy += 1
             continue
         out[k] = v
-    if warn and legacy_6:
+    if warn and legacy:
         print(
             "warning: ignored",
-            legacy_6,
-            "legacy 6-field fortify keys — retrain with 4/5-tuple keys",
+            legacy,
+            "legacy multi-field fortify keys — retrain with (d_max,) or (d_max, a_curr)",
         )
     return out
 
@@ -612,16 +604,18 @@ def str_to_deploy_key(s: str) -> Tuple[int, int]:
 
 
 def str_to_fortify_key(s: str) -> Tuple[int, ...]:
-    """Parse fortify key (4- or 5-field; legacy 6-field truncates to 4)."""
+    """Parse fortify key: 1-field oneshot or 2-field sequential ``(d_max, a_curr)``."""
     inner = s.strip()
     if inner.startswith("(") and inner.endswith(")"):
         inner = inner[1:-1]
-    parts = [p.strip() for p in inner.split(",")]
-    if len(parts) not in (4, 5, 6):
-        raise ValueError(f"invalid fortify key: {s!r}")
-    if len(parts) == 6:
-        return tuple(int(p) for p in parts[:4])
-    return tuple(int(p) for p in parts)
+    parts = [p.strip() for p in inner.split(",") if p.strip()]
+    if len(parts) == 1:
+        return (int(parts[0]),)
+    if len(parts) == 2:
+        return (int(parts[0]), int(parts[1]))
+    if len(parts) >= 3:
+        return (int(parts[0]),)
+    raise ValueError(f"invalid fortify key: {s!r}")
 
 
 def ucb_rank_bucket(score: float, anchor: float) -> int:
@@ -1021,30 +1015,25 @@ class MctslandBotPlayer:
 
     def _redistribute_key_tail(
         self, state: GameState, m: MapData, t: int, cluster: Set[int]
-    ) -> Tuple[int, int, int, int]:
-        """Fortify history key fields (connectivity computed but omitted from key)."""
+    ) -> Tuple[int]:
+        """Fortify history key: ``def_neighbor_max`` only (other helpers computed, not keyed)."""
         self._connectivity_all_other(cluster)
         self._connectivity_mission_count(state, m, cluster)
+        _mission_bucket_for_tile(m, state, self.seat, t)
+        self._hand_coin_kind_for_defender(state, t)
+        self._placement_att_cont(state, m, t)
         def_neighbor_max = min(self._max_enemy_neighbor_units(state, m, t), 4)
-        mission_bucket = _mission_bucket_for_tile(m, state, self.seat, t)
-        coin_kind = self._hand_coin_kind_for_defender(state, t)
-        att_cont = self._placement_att_cont(state, m, t)
-        return (
-            def_neighbor_max,
-            mission_bucket,
-            coin_kind,
-            att_cont,
-        )
+        return (def_neighbor_max,)
 
     def _build_fortify_key(
         self, state: GameState, m: MapData, t: int
     ) -> Tuple[int, ...]:
-        """Fortify place key: 4-tuple oneshot; 5-tuple sequential adds ``dest_units``."""
+        """Oneshot: ``(d_max,)``; sequential: ``(d_max, a_curr)`` with ``a_curr`` in 1..5."""
         cluster = self._own_cluster_bfs(state, m, t)
         tail = self._redistribute_key_tail(state, m, t, cluster)
         if self.fortify_placement == "sequential":
-            dest_units = min(int(state.units[t]), ATT_UNITS_CAP)
-            return tail + (dest_units,)
+            a_curr = min(int(state.units[t]), ATT_UNITS_CAP)
+            return tail + (a_curr,)
         return tail
 
     @staticmethod
@@ -1147,7 +1136,7 @@ class MctslandBotPlayer:
     def _fortify_ucb_scores_for_dests(
         self, state: GameState, m: MapData, dests: Set[int]
     ) -> Dict[int, float]:
-        """Fortify-table UCB1 per dest (4- or 5-tuple keys; total_visits over this turn's dests)."""
+        """Fortify-table UCB1 per dest (1- or 2-tuple keys; total_visits over this turn's dests)."""
         if not dests:
             return {}
         key_by_dest: Dict[int, str] = {}
@@ -1542,11 +1531,11 @@ class MctslandBotPlayer:
             )
             return None
         self._record_fortify_dest(state, m, dst, 1)
-        dest_units = min(int(state.units[dst]), ATT_UNITS_CAP)
+        a_curr = min(int(state.units[dst]), ATT_UNITS_CAP)
         self._log_fortify(
             state,
             f"{clabel} sequential pick pool_rem={self._fortify_pool_remaining} "
-            f"dst={m.territory_names[dst]} dest_units={dest_units}",
+            f"dst={m.territory_names[dst]} a_curr={a_curr}",
         )
         return MoveUnits(src, dst, 1)
 
