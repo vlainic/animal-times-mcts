@@ -6,9 +6,9 @@ Smoke test: ``N`` bot seats (default ``N=3``) play in-process.
 
 - **Count** — one digit ``3``..``6``: that many seats, all type **1** (Rookie).
   Example: ``--bots 4`` → four Rookie bots.
-- **Pattern** — string of length ``3``..``6``, each char is a bot type: ``1`` = Rookie,
-  ``2`` = Mctsland (when ``mctsland_bot_player`` exists). Example: ``--bots 1222`` → one
-  Rookie, three Mctsland.
+- **Pattern** — string of length ``3``..``6``, each char is a bot type: ``0`` = Chaotic,
+  ``1`` = Rookie, ``2`` = Mctsland (when ``mctsland_bot_player`` exists).
+  Example: ``--bots 1222`` → one Rookie, three Mctsland; ``--bots 0000`` → four Chaotic.
 
 **What it checks**
 
@@ -74,6 +74,7 @@ from mcts_train.mcts_search import (
     RolloutKind,
 )
 from mcts_train.paths import failure_log_path
+from mcts_train.players.chaotic_bot_player import ChaoticBotPlayer
 from mcts_train.players.rookie_bot_player import RookieBotPlayer
 from mcts_train.rollout_limits import (
     MICRO_STEP_BASE,
@@ -87,7 +88,7 @@ from mcts_train.state import GamePhase
 # Names must match ``missions.json`` elimination slugs where relevant; used for ``new_game``.
 _SMOKE_PLAYER_NAMES = ("beaver", "koala", "llama", "meerkat", "panda", "pig")
 
-_BOT_TYPE_NAMES = {1: "rookie", 2: "mctsland"}
+_BOT_TYPE_NAMES = {0: "chaotic", 1: "rookie", 2: "mctsland"}
 _ACTION_RING = 10
 
 
@@ -159,7 +160,7 @@ def parse_bots_spec(raw: str) -> Tuple[int, Tuple[int, ...]]:
     Parse ``--bots`` value.
 
     Returns:
-        ``(n_seats, (type_id per seat 0..n-1))`` where ``type_id`` 1 = rookie, 2 = mctsland, …
+        ``(n_seats, (type_id per seat 0..n-1))`` where ``type_id`` 0 = chaotic, 1 = rookie, 2 = mctsland, …
     """
     s = raw.strip()
     if not s:
@@ -176,9 +177,9 @@ def parse_bots_spec(raw: str) -> Tuple[int, Tuple[int, ...]]:
         raise ValueError(f"--bots pattern must have length 3-6, got {len(s)} ({raw!r})")
     codes: list[int] = []
     for ch in s:
-        if ch not in "12":
+        if ch not in "012":
             raise ValueError(
-                f"--bots unknown type {ch!r} in {raw!r} (supported: 1=Rookie, 2=Mctsland)"
+                f"--bots unknown type {ch!r} in {raw!r} (supported: 0=Chaotic, 1=Rookie, 2=Mctsland)"
             )
         codes.append(int(ch))
     return len(s), tuple(codes)
@@ -288,7 +289,9 @@ def _make_bot(
     mcts_decisions=None,
     fortify_placement: str = "oneshot",
 ) -> Any:
-    """Construct one seat's bot. ``type_id`` 1 = Rookie, 2 = Mctsland (optional module)."""
+    """Construct one seat's bot. ``type_id`` 0 = Chaotic, 1 = Rookie, 2 = Mctsland."""
+    if type_id == 0:
+        return ChaoticBotPlayer(seat, sim)
     if type_id == 1:
         return RookieBotPlayer(seat, sim)
     if type_id == 2:
@@ -592,7 +595,7 @@ def main() -> None:
         type=str,
         default="3",
         metavar="N|pattern",
-        help='Player count 3-6 as one digit (all Rookie), or pattern e.g. 1222 (1=Rookie, 2=Mctsland). Default: 3.',
+        help='Player count 3-6 as one digit (all Rookie), or pattern e.g. 0122 (0=Chaotic, 1=Rookie, 2=Mctsland). Default: 3.',
     )
     ap.add_argument(
         "--one-round-only",

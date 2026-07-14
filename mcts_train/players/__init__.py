@@ -13,10 +13,12 @@ from .mctsland_bot_player import (
     normalize_history,
     save_history_to_json,
 )
+from .chaotic_bot_player import ChaoticBotPlayer
 from .rookie_bot_player import RookieBotPlayer
 
 __all__ = [
     "DEFAULT_HISTORY",
+    "ChaoticBotPlayer",
     "MctslandBotPlayer",
     "RookieBotPlayer",
     "ensure_history_bundle",
