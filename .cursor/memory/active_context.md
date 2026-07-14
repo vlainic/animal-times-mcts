@@ -2,11 +2,17 @@
 
 ## Current focus
 - **Shipped game**: pure GDScript (no Python in export); territory nodes + MetaData; one-click Export All.
-- **Optional offline**: `mcts_train/` (repo root) for Milos-rule simulator, **Mctsland** bot (ephemeral MCTS at ATTACK/spree + bandit deploy/fortify + nested JSON history), and self-play training (not runtime).
+- **Optional offline**: `mcts_train/` (repo root) for Milos-rule simulator, baseline bots (**Chaotic**, **Rookie**), **Mctsland** (ephemeral MCTS at ATTACK/spree + bandit deploy/fortify + nested JSON history), and self-play training (not runtime).
 - **Mctsland** (Python): four learned tables — **attack**, **spree**, **deploy**, **fortify**; REINFORCE uses Rookie top-3 cascade consolidate.
 - Recent HUD/MP polish: **DEPLOY undo**, **elimination mission compact display + custom tooltip**, optional **elimination-mission assign cheat**, **game event log** under MissionDisplay.
 
 ## Recent changes (session summary)
+- **ChaoticBotPlayer** (Python port of Godot chaotic bot; ``--bots`` type **`0``**):
+  - Module: ``mcts_train/players/chaotic_bot_player.py``; exported from ``players/__init__.py``.
+  - **REINFORCE** / **FORTIFY**: skip (`EndReinforce` / `EndFortify`).
+  - **ATTACK**: at most one random ``Combat`` from ``sim.legal_actions`` (AoD 1-unit attacks included when legal); on clean overrun → one bulk slide via ``overrun_slide_from/to``; then ``EndAttack`` (no multi-attack chain).
+  - **DEPLOY**: uniform random ``DeployPlace`` among legal dests.
+  - CLI: ``smoke_rollout.py`` / ``mcts_calibrate.py`` — ``parse_bots_spec`` accepts ``0|1|2``; e.g. ``--bots 0000``, ``--bots 0122``. All-Chaotic games often hit ``max_steps`` (rarely finish); mixed seats finish normally.
 - **One-shot DEPLOY / FORTIFY placement** (`mctsland_bot_player.py`):
   - **DEPLOY**: one `choose_action` — rank legal dests by fortify-table UCB → decile 1–10 (per-turn, not global) → deploy 2-tuple UCB → softmax/linear distribute → bulk `DeployPlace`; return `EndDeploy`.
   - **FORTIFY**: one `choose_action` — all clusters: bulk strip to hub, one-shot place via fortify UCB + distribute; return `EndFortify`. No placement MCTS.
@@ -31,7 +37,7 @@
   - **Truncated eval** (`_eval_truncated`): 0.25 territory-ratio (my lands vs avg opponent) + 0.25 mission progress (conquest: % tiles owned in required continents; elimination: fewer target lands = better, -0.01 per land; sLands: my_terr/20; sTriple: avg top-3 continent %).
   - **Parallelism** (`--workers W`): Both `mcts_selfplay.py` and `mcts_calibrate.py` support `--workers` (default 1; 0 = all CPUs). Uses `multiprocessing.Pool` + `imap_unordered` for streaming results. **Selfplay**: `--save-every` controls sub-chunk size; history merged+saved after each sub-task completes. **Calibrate**: `--progress-every` controls sub-chunk size; progress printed per task completion.
   - **Smoke / calibrate**: ``smoke_rollout.py``, ``mcts_calibrate.py`` share ``run_one_rollout``; ``mcts_search_smoke.py`` quick legality check.
-  - **Smoke script** `Python/mcts_train/scripts/smoke_rollout.py`: **``--bots``** pattern (``1``=Rookie, ``2``=Mctsland). MCTS CLI (Mctsland): ``--mcts-iterations`` (default 100), ``--mcts-depth`` (5), ``--mcts-breadth`` (5), ``--mcts-rollout`` ``uniform|rookie``, ``--mcts-no-history-prior``, ``--mcts-bandit-only`` (``iterations=0`` → legacy JSON bandit only). ``--mcts-history PATH`` = inference read-only.
+  - **Smoke script** `scripts/smoke_rollout.py`: **``--bots``** pattern (``0``=Chaotic, ``1``=Rookie, ``2``=Mctsland). MCTS CLI (Mctsland): ``--mcts-iterations`` (default 100), ``--mcts-depth`` (5), ``--mcts-breadth`` (5), ``--mcts-rollout`` ``uniform|rookie``, ``--mcts-no-history-prior``, ``--mcts-bandit-only`` (``iterations=0`` → legacy JSON bandit only). ``--mcts-history PATH`` = inference read-only.
   - **Mctsland bot** (`mcts_train/players/mctsland_bot_player.py`):
     - **REINFORCE**: Rookie weighted top-3 attack plan; **cascade consolidate** each distinct attacker to ``ATT_UNITS_CAP`` (5); ``_stored_attack`` = rank #1.
     - **DEPLOY**: one-shot UCB distribute; deploy history key ``(fortify_decile, att_units)``; logs ``[DEPLOY_PICK]``.
@@ -58,6 +64,7 @@
 - **Dev cheat**: `Globals.CHEAT_ALWAYS_ELIMINATION_MISSION` — when true, server `_assign_missions_to_players` prefers valid **elimination** missions for **human** players (tutorial human mission unchanged). Toggle in `globals.gd`; turn off for release builds.
 
 ## Next steps
+- Use **Chaotic** as weak baseline in calibrate mixes (e.g. ``--bots 0122``).
 - **Run ablation matrix** via ``mcts_calibrate.py --mcts-decisions`` (``full``, ``none``, per-type ``exclude_*`` / ``include_*``); use ``--fresh`` or separate ``--calibration`` per arm.
 - **Train** fresh nested history (attack + spree + deploy + fortify) via ``mcts_selfplay.py`` with default full-attack; old ``placement`` / 7-tuple deploy JSON not compatible — retrain from scratch for deploy/fortify bandits.
 - Optional: wire **Mctsland** into Godot bot seat (load trained JSON + MCTS knobs or bandit-only for speed).

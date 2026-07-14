@@ -59,11 +59,13 @@ Business logic for rules belongs in `simulator.py` / `missions.py`, not in CLI a
 
 | ID | Player |
 |----|--------|
+| `0` | ChaoticBotPlayer |
 | `1` | RookieBotPlayer |
 | `2` | MctslandBotPlayer |
-| `4` | (other bot types as defined in players/) |
 
-Example: `--bots 1222` = seat 0 Rookie, seats 1–3 Mctsland.
+Example: `--bots 1222` = seat 0 Rookie, seats 1–3 Mctsland; `--bots 0122` = Chaotic + Rookie + 2× Mctsland.
+
+**Chaotic** (`players/chaotic_bot_player.py`): skip reinforce/fortify; one random Combat + overrun bulk slide; random deploy. AoD 1-unit attacks via `legal_actions` only.
 
 ## Data Paths
 

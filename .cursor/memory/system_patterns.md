@@ -2641,7 +2641,15 @@ func sync_territory_units(territory_name: String, new_unit_count: int):
   - **`[CONTINENT]`**: emitted when ``_continent_just_completed`` fires after ownership write — player name, continent name, **``+N pending deploy bonus``** from ``CONTINENT_BONUS`` (0 if continent not in table).
   - **`[ELIM]`**: ``apply_player_elimination`` — eliminated vs eliminator names, cards transferred. **Triggered from combat** when a seat’s **owned tile count hits zero** (conquest removes defender’s last land; ``def_conq`` removes attacker’s last land).
   - **`[WIN]`**: ``_append_win_log`` — reasons ``mission_complete`` (``_maybe_declare_winner`` after ``EndFortify``) or ``elimination_mission`` (instant win inside ``apply_player_elimination``). Body uses **``MissionSpec.raw``** ``title`` + ``description`` from ``Missions/missions.json``, then ``mission_id`` / ``mission_type``; fallback sentences if ``raw`` empty (``_mission_win_log_detail``).
-- **Smoke**: ``scripts/smoke_rollout.py`` — ``--bots`` pattern (``1``=Rookie, ``2``=Mctsland); MCTS CLI flags; ``mcts_calibrate.py``; ``mcts_search_smoke.py``.
+- **Smoke**: ``scripts/smoke_rollout.py`` — ``--bots`` pattern (``0``=Chaotic, ``1``=Rookie, ``2``=Mctsland); MCTS CLI flags; ``mcts_calibrate.py``; ``mcts_search_smoke.py``.
+
+### Python `mcts_train` — ChaoticBotPlayer (offline, not runtime)
+
+- **Module** ``players/chaotic_bot_player.py`` (port of ``gdscripts/Players/Chaotic/chaotic_bot_player.gd``); CLI type **`0`**.
+- **REINFORCE** / **FORTIFY**: immediate ``EndReinforce`` / ``EndFortify``.
+- **ATTACK**: at most one random ``Combat`` from ``legal_actions`` (AoD 1-unit when sim emits it); post-conquest → bulk ``MoveUnits`` on ``overrun_slide_from/to``; then ``EndAttack`` (no chain).
+- **DEPLOY**: uniform random among legal ``DeployPlace``.
+- Wired via ``smoke_rollout.parse_bots_spec`` / ``_make_bot``; calibrate inherits the same helpers.
 
 ### Python `mcts_train` — Mctsland MCTS decisions (offline, not runtime)
 

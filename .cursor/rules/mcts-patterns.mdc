@@ -90,10 +90,17 @@ REINFORCE → ATTACK → DEPLOY → FORTIFY → (next player) → GAME_OVER
 - Training: `notify_game_over` increments visits/wins per logged key (whole-game win)
 - Inference: `from_history_file`, `history_readonly=True`
 
+### ChaoticBotPlayer
+- CLI type **`0`** in `--bots` (`smoke_rollout` / `mcts_calibrate`)
+- REINFORCE / FORTIFY → skip (`EndReinforce` / `EndFortify`)
+- ATTACK → one random `Combat` from `legal_actions` (AoD 1-unit via sim); overrun → bulk slide on `overrun_slide_from/to`; then `EndAttack` (no chain)
+- DEPLOY → uniform random `DeployPlace`
+- Module: `mcts_train/players/chaotic_bot_player.py` (Godot: `gdscripts/Players/Chaotic/chaotic_bot_player.gd`)
+
 ### CLI Scripts (repo root)
 | Script | Purpose |
 |--------|---------|
-| `scripts/smoke_rollout.py` | Quick mixed-bot games (`--bots` pattern: `1`=Rookie, `2`=Mctsland, `4`=…) |
+| `scripts/smoke_rollout.py` | Quick mixed-bot games (`--bots` pattern: `0`=Chaotic, `1`=Rookie, `2`=Mctsland) |
 | `scripts/mcts_selfplay.py` | Training runs → `data/mctsland_history_*.json` |
 | `scripts/mcts_calibrate.py` | Eval / calibration with same MCTS flags + `--mcts-decisions` ablation |
 | `scripts/mcts_search_smoke.py` | Legality / search smoke check |
