@@ -68,11 +68,13 @@ above anchor).
 
 **Fortify state key** (FORTIFY place after strip)
 
-- **Oneshot** (4-tuple): ``(def_neighbor_max, mission_bucket, is_card, att_cont)`` — max **120**
-- **Sequential** (5-tuple): same four fields + ``dest_units`` = ``min(units[dst], 5)`` — max **600**
+- **Oneshot** (4-tuple): ``(def_neighbor_max, mission_bucket, coin_kind, att_cont)`` — max **240**
+- **Sequential** (5-tuple): same four fields + ``dest_units`` = ``min(units[dst], 5)`` — max **1200**
 
 ``mission_bucket`` is ``0`` / ``1`` / ``2`` (none / flexible / priority), same as attack —
 from :func:`~mcts_train.missions.mission_territory_values` on the destination tile.
+``coin_kind`` is ``0`` / ``1`` / ``2`` / ``3`` (none / saber / gun / cannon), same as attack —
+from :meth:`_hand_coin_kind_for_defender` on the destination tile.
 
 ``connectivity_all`` / ``connectivity_mission`` helpers remain in code but are omitted from the key.
 
@@ -1025,12 +1027,12 @@ class MctslandBotPlayer:
         self._connectivity_mission_count(state, m, cluster)
         def_neighbor_max = min(self._max_enemy_neighbor_units(state, m, t), 4)
         mission_bucket = _mission_bucket_for_tile(m, state, self.seat, t)
-        is_card = 1 if self._hand_coin_kind_for_defender(state, t) > 0 else 0
+        coin_kind = self._hand_coin_kind_for_defender(state, t)
         att_cont = self._placement_att_cont(state, m, t)
         return (
             def_neighbor_max,
             mission_bucket,
-            is_card,
+            coin_kind,
             att_cont,
         )
 
