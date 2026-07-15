@@ -68,11 +68,13 @@ above anchor).
 
 **Fortify state key** (FORTIFY place after strip)
 
-- **Oneshot** (1-tuple): ``(def_neighbor_max,)`` — max enemy units adjacent, **0..4** (``5`` states)
-- **Sequential** (2-tuple): ``(def_neighbor_max, a_curr)`` where ``a_curr`` =
-  ``min(units[dst], 5)`` (``1..5``) — max **25** states
+- **Oneshot** (2-tuple): ``(def_neighbor_max, mission_bucket)`` — max **15** states
+  (``d_max`` 0..4 × ``mission`` 0/1/2)
+- **Sequential** (3-tuple): ``(def_neighbor_max, mission_bucket, a_curr)`` — max **75**
+  (same + ``a_curr`` = ``min(units[dst], 5)``)
 
-Mission / coin / continent helpers remain in code but are omitted from the key.
+``mission_bucket`` is ``0`` / ``1`` / ``2`` (none / flexible / priority), same as attack.
+Coin / continent helpers remain in code but are omitted from the key.
 
 **History JSON**
 
@@ -304,13 +306,13 @@ def _fortify_key_field_count(key_str: str) -> int:
 
 
 def _parse_fortify_history_table(raw: Any, *, warn: bool = False) -> HistoryTable:
-    """Load fortify table; accept 1- or 2-field keys; skip legacy longer keys."""
+    """Load fortify table; accept 2- or 3-field keys; skip legacy other lengths."""
     table = _parse_history_table(raw)
     legacy = 0
     out: HistoryTable = {}
     for k, v in table.items():
         n_fields = _fortify_key_field_count(k)
-        if n_fields not in (1, 2):
+        if n_fields not in (2, 3):
             legacy += 1
             continue
         out[k] = v
@@ -318,7 +320,7 @@ def _parse_fortify_history_table(raw: Any, *, warn: bool = False) -> HistoryTabl
         print(
             "warning: ignored",
             legacy,
-            "legacy multi-field fortify keys — retrain with (d_max,) or (d_max, a_curr)",
+            "legacy fortify keys — retrain with (d_max, mission) or (d_max, mission, a_curr)",
         )
     return out
 
@@ -604,17 +606,15 @@ def str_to_deploy_key(s: str) -> Tuple[int, int]:
 
 
 def str_to_fortify_key(s: str) -> Tuple[int, ...]:
-    """Parse fortify key: 1-field oneshot or 2-field sequential ``(d_max, a_curr)``."""
+    """Parse fortify key: 2-field oneshot or 3-field sequential ``(d_max, mission[, a_curr])``."""
     inner = s.strip()
     if inner.startswith("(") and inner.endswith(")"):
         inner = inner[1:-1]
     parts = [p.strip() for p in inner.split(",") if p.strip()]
-    if len(parts) == 1:
-        return (int(parts[0]),)
     if len(parts) == 2:
         return (int(parts[0]), int(parts[1]))
-    if len(parts) >= 3:
-        return (int(parts[0]),)
+    if len(parts) == 3:
+        return (int(parts[0]), int(parts[1]), int(parts[2]))
     raise ValueError(f"invalid fortify key: {s!r}")
 
 
@@ -1015,20 +1015,20 @@ class MctslandBotPlayer:
 
     def _redistribute_key_tail(
         self, state: GameState, m: MapData, t: int, cluster: Set[int]
-    ) -> Tuple[int]:
-        """Fortify history key: ``def_neighbor_max`` only (other helpers computed, not keyed)."""
+    ) -> Tuple[int, int]:
+        """Fortify history key: ``(d_max, mission_bucket)``; other helpers not keyed."""
         self._connectivity_all_other(cluster)
         self._connectivity_mission_count(state, m, cluster)
-        _mission_bucket_for_tile(m, state, self.seat, t)
         self._hand_coin_kind_for_defender(state, t)
         self._placement_att_cont(state, m, t)
         def_neighbor_max = min(self._max_enemy_neighbor_units(state, m, t), 4)
-        return (def_neighbor_max,)
+        mission_bucket = _mission_bucket_for_tile(m, state, self.seat, t)
+        return (def_neighbor_max, mission_bucket)
 
     def _build_fortify_key(
         self, state: GameState, m: MapData, t: int
     ) -> Tuple[int, ...]:
-        """Oneshot: ``(d_max,)``; sequential: ``(d_max, a_curr)`` with ``a_curr`` in 1..5."""
+        """Oneshot: ``(d_max, mission)``; sequential: ``(d_max, mission, a_curr)``."""
         cluster = self._own_cluster_bfs(state, m, t)
         tail = self._redistribute_key_tail(state, m, t, cluster)
         if self.fortify_placement == "sequential":
