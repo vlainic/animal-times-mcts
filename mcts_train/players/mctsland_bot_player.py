@@ -68,13 +68,14 @@ above anchor).
 
 **Fortify state key** (FORTIFY place after strip)
 
-- **Oneshot** (2-tuple): ``(def_neighbor_max, connectivity_all)`` — max **30** states
-  (``d_max`` 0..4 × ``connectivity_all`` 0..5)
-- **Sequential** (3-tuple): ``(def_neighbor_max, connectivity_all, a_curr)`` — max **150**
+- **Oneshot** (2-tuple): ``(def_neighbor_max, pool_rem)`` — max **50** states
+  (``d_max`` 0..4 × ``pool_rem`` 1..10)
+- **Sequential** (3-tuple): ``(def_neighbor_max, pool_rem, a_curr)`` — max **250**
   (same + ``a_curr`` = ``min(units[dst], 5)``)
 
-``connectivity_all`` is other own tiles in the destination's connected cluster, capped **0..5**
-(:meth:`_connectivity_all_other`). Mission / coin / continent helpers remain computed but omitted.
+``pool_rem`` is armies still to place after strip (oneshot: full cluster pool; sequential: before
+each pick), bucketed **1..10** via :meth:`_fortify_pool_rem_bucket`. Mission / coin / continent
+helpers remain computed but omitted.
 
 **History JSON**
 
@@ -320,7 +321,7 @@ def _parse_fortify_history_table(raw: Any, *, warn: bool = False) -> HistoryTabl
         print(
             "warning: ignored",
             legacy,
-            "legacy fortify keys — retrain with (d_max, connectivity_all) or (d_max, connectivity_all, a_curr)",
+            "legacy fortify keys — retrain with (d_max, pool_rem) or (d_max, pool_rem, a_curr)",
         )
     return out
 
@@ -606,7 +607,7 @@ def str_to_deploy_key(s: str) -> Tuple[int, int]:
 
 
 def str_to_fortify_key(s: str) -> Tuple[int, ...]:
-    """Parse fortify key: 2-field oneshot or 3-field sequential ``(d_max, connectivity_all[, a_curr])``."""
+    """Parse fortify key: 2-field oneshot or 3-field sequential ``(d_max, pool_rem[, a_curr])``."""
     inner = s.strip()
     if inner.startswith("(") and inner.endswith(")"):
         inner = inner[1:-1]
@@ -677,6 +678,7 @@ class MctslandBotPlayer:
     _fortify_active_cluster: Optional[Set[int]] = field(default=None, init=False, repr=False)
     _fortify_hub: Optional[int] = field(default=None, init=False, repr=False)
     _fortify_pool_remaining: int = field(default=0, init=False, repr=False)
+    _fortify_key_pool_rem: int = field(default=0, init=False, repr=False)
     _placement_cache: Optional[Dict[int, Tuple[Action, str, float]]] = field(
         default=None, init=False, repr=False
     )
@@ -754,6 +756,7 @@ class MctslandBotPlayer:
         self._fortify_active_cluster = None
         self._fortify_hub = None
         self._fortify_pool_remaining = 0
+        self._fortify_key_pool_rem = 0
 
     def reset_for_new_turn(self) -> None:
         """Clear Rookie turn state and chain anchor when the active seat changes."""
@@ -1013,22 +1016,37 @@ class MctslandBotPlayer:
         att_units = min(int(state.units[t]), ATT_UNITS_CAP)
         return (int(decile), att_units)
 
+    @staticmethod
+    def _fortify_pool_rem_bucket(pool: int) -> int:
+        """Bucket remaining armies to place after strip: 1..10."""
+        return min(max(1, int(pool)), 10)
+
+    def _fortify_pool_rem_for_key(self, state: GameState) -> int:
+        """Resolve pool_rem for fortify-table lookup (placement sets ``_fortify_key_pool_rem``)."""
+        if self._fortify_key_pool_rem > 0:
+            return self._fortify_pool_rem_bucket(self._fortify_key_pool_rem)
+        if state.phase == GamePhase.DEPLOY:
+            pending = int(state.pending_deploy_armies[self.seat])
+            return self._fortify_pool_rem_bucket(pending if pending > 0 else 10)
+        return 10
+
     def _redistribute_key_tail(
         self, state: GameState, m: MapData, t: int, cluster: Set[int]
     ) -> Tuple[int, int]:
-        """Fortify history key: ``(d_max, connectivity_all)``; other helpers not keyed."""
+        """Fortify history key: ``(d_max, pool_rem)``; other helpers not keyed."""
         self._connectivity_mission_count(state, m, cluster)
+        self._connectivity_all_other(cluster)
         _mission_bucket_for_tile(m, state, self.seat, t)
         self._hand_coin_kind_for_defender(state, t)
         self._placement_att_cont(state, m, t)
         def_neighbor_max = min(self._max_enemy_neighbor_units(state, m, t), 4)
-        connectivity_all = self._connectivity_all_other(cluster)
-        return (def_neighbor_max, connectivity_all)
+        pool_rem = self._fortify_pool_rem_for_key(state)
+        return (def_neighbor_max, pool_rem)
 
     def _build_fortify_key(
         self, state: GameState, m: MapData, t: int
     ) -> Tuple[int, ...]:
-        """Oneshot: ``(d_max, connectivity_all)``; sequential: ``(d_max, connectivity_all, a_curr)``."""
+        """Oneshot: ``(d_max, pool_rem)``; sequential: ``(d_max, pool_rem, a_curr)``."""
         cluster = self._own_cluster_bfs(state, m, t)
         tail = self._redistribute_key_tail(state, m, t, cluster)
         if self.fortify_placement == "sequential":
@@ -1459,6 +1477,7 @@ class MctslandBotPlayer:
         clabel: str,
     ) -> None:
         """One-shot UCB distribute ``pool_size`` armies across cluster destinations."""
+        self._fortify_key_pool_rem = pool_size
         arms = self._fortify_place_arms(state, m, cluster, hub)
         if not arms:
             self._log_fortify(state, f"{clabel} place_stuck pool={pool_size}")
@@ -1501,6 +1520,7 @@ class MctslandBotPlayer:
     ) -> Optional[MoveUnits]:
         """Score UCB on current board, sample one army; caller applies the returned move."""
         self._clear_placement_cache()
+        self._fortify_key_pool_rem = self._fortify_pool_remaining
         arms = self._fortify_place_arms(state, m, cluster, hub)
         if not arms:
             self._log_fortify(state, f"{clabel} place_stuck pool={self._fortify_pool_remaining}")
