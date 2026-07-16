@@ -68,14 +68,13 @@ above anchor).
 
 **Fortify state key** (FORTIFY place after strip)
 
-- **Oneshot** (2-tuple): ``(def_neighbor_max, coin_kind)`` — max **20** states
-  (``d_max`` 0..4 × ``coin_kind`` 0..3)
-- **Sequential** (3-tuple): ``(def_neighbor_max, coin_kind, a_curr)`` — max **100**
+- **Oneshot** (2-tuple): ``(def_neighbor_max, connectivity_all)`` — max **30** states
+  (``d_max`` 0..4 × ``connectivity_all`` 0..5)
+- **Sequential** (3-tuple): ``(def_neighbor_max, connectivity_all, a_curr)`` — max **150**
   (same + ``a_curr`` = ``min(units[dst], 5)``)
 
-``coin_kind`` is ``0`` / ``1`` / ``2`` / ``3`` (none / saber / gun / cannon), same as attack —
-from :meth:`_hand_coin_kind_for_defender` on the destination tile.
-Mission / continent helpers remain in code but are omitted from the key.
+``connectivity_all`` is other own tiles in the destination's connected cluster, capped **0..5**
+(:meth:`_connectivity_all_other`). Mission / coin / continent helpers remain computed but omitted.
 
 **History JSON**
 
@@ -321,7 +320,7 @@ def _parse_fortify_history_table(raw: Any, *, warn: bool = False) -> HistoryTabl
         print(
             "warning: ignored",
             legacy,
-            "legacy fortify keys — retrain with (d_max, coin_kind) or (d_max, coin_kind, a_curr)",
+            "legacy fortify keys — retrain with (d_max, connectivity_all) or (d_max, connectivity_all, a_curr)",
         )
     return out
 
@@ -607,7 +606,7 @@ def str_to_deploy_key(s: str) -> Tuple[int, int]:
 
 
 def str_to_fortify_key(s: str) -> Tuple[int, ...]:
-    """Parse fortify key: 2-field oneshot or 3-field sequential ``(d_max, coin_kind[, a_curr])``."""
+    """Parse fortify key: 2-field oneshot or 3-field sequential ``(d_max, connectivity_all[, a_curr])``."""
     inner = s.strip()
     if inner.startswith("(") and inner.endswith(")"):
         inner = inner[1:-1]
@@ -1017,19 +1016,19 @@ class MctslandBotPlayer:
     def _redistribute_key_tail(
         self, state: GameState, m: MapData, t: int, cluster: Set[int]
     ) -> Tuple[int, int]:
-        """Fortify history key: ``(d_max, coin_kind)``; other helpers not keyed."""
-        self._connectivity_all_other(cluster)
+        """Fortify history key: ``(d_max, connectivity_all)``; other helpers not keyed."""
         self._connectivity_mission_count(state, m, cluster)
         _mission_bucket_for_tile(m, state, self.seat, t)
+        self._hand_coin_kind_for_defender(state, t)
         self._placement_att_cont(state, m, t)
         def_neighbor_max = min(self._max_enemy_neighbor_units(state, m, t), 4)
-        coin_kind = self._hand_coin_kind_for_defender(state, t)
-        return (def_neighbor_max, coin_kind)
+        connectivity_all = self._connectivity_all_other(cluster)
+        return (def_neighbor_max, connectivity_all)
 
     def _build_fortify_key(
         self, state: GameState, m: MapData, t: int
     ) -> Tuple[int, ...]:
-        """Oneshot: ``(d_max, coin_kind)``; sequential: ``(d_max, coin_kind, a_curr)``."""
+        """Oneshot: ``(d_max, connectivity_all)``; sequential: ``(d_max, connectivity_all, a_curr)``."""
         cluster = self._own_cluster_bfs(state, m, t)
         tail = self._redistribute_key_tail(state, m, t, cluster)
         if self.fortify_placement == "sequential":
