@@ -68,13 +68,13 @@ above anchor).
 
 **Fortify state key** (FORTIFY place after strip)
 
-- **Oneshot** (2-tuple): ``(def_neighbor_max, enemy_count)`` — max **25** states
-  (``d_max`` 0..4 × ``enemy_count`` 0..4)
-- **Sequential** (3-tuple): ``(def_neighbor_max, enemy_count, a_curr)`` — max **125**
-  (same + ``a_curr`` = ``min(units[dst], 5)``)
+- **Oneshot** (2-tuple): ``(def_neighbor_max, enemy_count)`` — max **49** states
+  (``d_max`` 0..6 × ``enemy_count`` 0..6)
+- **Sequential** (3-tuple): ``(def_neighbor_max, enemy_count, a_curr)`` — max **343**
+  (same + ``a_curr`` = ``min(units[dst], 7)``)
 
 ``enemy_count`` is enemy-owned neighbor tiles adjacent to the destination (attackable lands),
-capped **0..4** via :meth:`_enemy_neighbor_count`. ``pool_rem`` helper remains computed but omitted.
+capped **0..6** via :meth:`_enemy_neighbor_count`. ``pool_rem`` helper remains computed but omitted.
 Mission / coin / continent helpers remain computed but omitted.
 
 **History JSON**
@@ -138,6 +138,9 @@ from .rookie_bot_player import RookieBotPlayer
 
 ATT_UNITS_CAP = 5
 DEF_UNITS_CAP = 5
+FORTIFY_D_MAX_CAP = 6
+FORTIFY_ENEMY_COUNT_CAP = 6
+FORTIFY_A_CURR_CAP = 7
 DEFAULT_WIN_RATE = 0.5
 UCB_C = math.sqrt(2.0)
 HISTORY_ATTACK = "attack"
@@ -982,17 +985,17 @@ class MctslandBotPlayer:
             o = int(state.owners[nb])
             if o < 0 or o == self.seat:
                 continue
-            best = max(best, min(int(state.units[nb]), DEF_UNITS_CAP))
+            best = max(best, min(int(state.units[nb]), FORTIFY_D_MAX_CAP))
         return best
 
     def _enemy_neighbor_count(self, state: GameState, m: MapData, t: int) -> int:
-        """Enemy-owned tiles adjacent to ``t``; capped 0..4."""
+        """Enemy-owned tiles adjacent to ``t``; capped 0..6."""
         n = 0
         for nb in m.neighbors(t):
             o = int(state.owners[nb])
             if o >= 0 and o != self.seat:
                 n += 1
-        return min(n, 4)
+        return min(n, FORTIFY_ENEMY_COUNT_CAP)
 
     def _placement_att_cont(self, state: GameState, m: MapData, t: int) -> int:
         """``0`` if continent of ``t`` is fully owned; else bucket 1/2/3."""
@@ -1049,7 +1052,7 @@ class MctslandBotPlayer:
         self._hand_coin_kind_for_defender(state, t)
         self._placement_att_cont(state, m, t)
         self._fortify_pool_rem_for_key(state)
-        def_neighbor_max = min(self._max_enemy_neighbor_units(state, m, t), 4)
+        def_neighbor_max = min(self._max_enemy_neighbor_units(state, m, t), FORTIFY_D_MAX_CAP)
         enemy_count = self._enemy_neighbor_count(state, m, t)
         return (def_neighbor_max, enemy_count)
 
@@ -1060,7 +1063,7 @@ class MctslandBotPlayer:
         cluster = self._own_cluster_bfs(state, m, t)
         tail = self._redistribute_key_tail(state, m, t, cluster)
         if self.fortify_placement == "sequential":
-            a_curr = min(int(state.units[t]), ATT_UNITS_CAP)
+            a_curr = min(int(state.units[t]), FORTIFY_A_CURR_CAP)
             return tail + (a_curr,)
         return tail
 
@@ -1561,7 +1564,7 @@ class MctslandBotPlayer:
             )
             return None
         self._record_fortify_dest(state, m, dst, 1)
-        a_curr = min(int(state.units[dst]), ATT_UNITS_CAP)
+        a_curr = min(int(state.units[dst]), FORTIFY_A_CURR_CAP)
         self._log_fortify(
             state,
             f"{clabel} sequential pick pool_rem={self._fortify_pool_remaining} "
