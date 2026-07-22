@@ -22,7 +22,7 @@ history is read-only (no training writes).
         --mcts-decisions include_fortify --fortify-placement sequential --fresh
 
 **Decision-type ablation:** ``--mcts-decisions`` toggles which Mctsland types use trained
-logic (attack, spree, deploy, fortify) vs Rookie fallback. ``full`` (default) enables all four;
+logic (attack, spree, deploy, fortify, reinforce) vs Rookie fallback. ``full`` (default) enables all five;
 ``none`` disables all; ``exclude_<type>`` / ``include_<type>`` comma tokens for partial ablation.
 
 **Fortify placement:** ``--fortify-placement oneshot`` (default) bulk UCB distribute per cluster;
@@ -297,7 +297,9 @@ def _run_calibration_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     m_breadth = int(w["mcts_breadth"])
     placement_distribute = str(w.get("placement_distribute", "softmax"))
     placement_softmax_temp = float(w.get("placement_softmax_temp", 1.0))
-    mcts_decisions = frozenset(w.get("mcts_decisions", ["attack", "spree", "deploy", "fortify"]))
+    mcts_decisions = frozenset(
+        w.get("mcts_decisions", ["attack", "spree", "deploy", "fortify", "reinforce"])
+    )
     fortify_placement = str(w.get("fortify_placement", "oneshot"))
 
     sim: Simulator = w["sim"]
@@ -645,7 +647,7 @@ def main() -> None:
         help=(
             "Which Mctsland decision types use trained logic: "
             "full | none | exclude_attack | include_attack,include_spree. "
-            "Types: attack, spree, deploy, fortify. Default: full."
+            "Types: attack, spree, deploy, fortify, reinforce. Default: full."
         ),
     )
     ap.add_argument(

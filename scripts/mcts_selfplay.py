@@ -14,7 +14,8 @@ Self-play training for Mctsland bots — accumulates visit/win stats in JSON.
         --mcts-decisions include_fortify --fortify-placement sequential
 
 ``--mcts-decisions`` toggles which decision types use Mctsland logic vs Rookie fallback
-(``full`` default, ``none``, ``exclude_<type>``, ``include_<type>``). REINFORCE unchanged.
+(``full`` default, ``none``, ``exclude_<type>``, ``include_<type>``). Types: attack, spree,
+deploy, fortify, reinforce.
 
 Each match draws missions from **all** pools (``mission_pool=\"all\"`` in ``Simulator.new_game``):
 conquest + elimination + special, shuffled together.
@@ -322,7 +323,9 @@ def _run_selfplay_chunk(chunk_args: Dict[str, Any]) -> Dict[str, Any]:
     placement_distribute = str(w.get("placement_distribute", "softmax"))
     placement_softmax_temp = float(w.get("placement_softmax_temp", 1.0))
     fortify_placement = str(w.get("fortify_placement", "oneshot"))
-    mcts_decisions = frozenset(w.get("mcts_decisions", ["attack", "spree", "deploy", "fortify"]))
+    mcts_decisions = frozenset(
+        w.get("mcts_decisions", ["attack", "spree", "deploy", "fortify", "reinforce"])
+    )
 
     sim: Simulator = w["sim"]
     history = copy.deepcopy(w["initial_history"])
@@ -496,7 +499,7 @@ def main() -> None:
         help=(
             "Which Mctsland decision types use trained logic: "
             "full | none | exclude_attack | include_attack,include_fortify. "
-            "Types: attack, spree, deploy, fortify. Default: full."
+            "Types: attack, spree, deploy, fortify, reinforce. Default: full."
         ),
     )
     ap.add_argument(

@@ -68,14 +68,14 @@ above anchor).
 
 **Fortify state key** (FORTIFY place after strip)
 
-- **Oneshot** (2-tuple): ``(def_neighbor_max, mission_hop)`` — max **25** states
-  (``d_max`` 0..4 × ``mission_hop`` -1..3)
-- **Sequential** (3-tuple): ``(def_neighbor_max, mission_hop, a_curr)`` — max **125**
+- **Oneshot** (2-tuple): ``(def_neighbor_max, is_mission)`` — max **10** states
+  (``d_max`` 0..4 × ``is_mission`` 0/1)
+- **Sequential** (3-tuple): ``(def_neighbor_max, is_mission, a_curr)`` — max **50**
   (same + ``a_curr`` = ``min(units[dst], 5)``)
 
-``mission_hop`` is BFS hops within the fortify cluster to the nearest owned mission-relevant tile
-(:meth:`_mission_hop_distance`); **-1** if none in cluster. ``pool_per_tile``, ``enemy_count``,
-``pool_rem`` 1..10 bucket, mission / coin / continent / connectivity helpers remain computed but omitted.
+``is_mission`` is ``1`` iff ``_mission_bucket_for_tile`` > 0 on the destination. ``mission_hop``,
+``pool_per_tile``, ``enemy_count``, ``pool_rem`` 1..10 bucket, mission / coin / continent /
+connectivity helpers remain computed but omitted.
 
 **History JSON**
 
@@ -144,9 +144,16 @@ HISTORY_ATTACK = "attack"
 HISTORY_SPREE = "spree"
 HISTORY_DEPLOY = "deploy"
 HISTORY_FORTIFY = "fortify"
+HISTORY_REINFORCE = "reinforce"
 LEGACY_HISTORY_PLACEMENT = "placement"
 
-DECISION_TYPES = (HISTORY_ATTACK, HISTORY_SPREE, HISTORY_DEPLOY, HISTORY_FORTIFY)
+DECISION_TYPES = (
+    HISTORY_ATTACK,
+    HISTORY_SPREE,
+    HISTORY_DEPLOY,
+    HISTORY_FORTIFY,
+    HISTORY_REINFORCE,
+)
 ALL_MCTS_DECISIONS = frozenset(DECISION_TYPES)
 
 
@@ -321,7 +328,7 @@ def _parse_fortify_history_table(raw: Any, *, warn: bool = False) -> HistoryTabl
         print(
             "warning: ignored",
             legacy,
-            "legacy fortify keys — retrain with (d_max, mission_hop) or (d_max, mission_hop, a_curr)",
+            "legacy fortify keys — retrain with (d_max, is_mission) or (d_max, is_mission, a_curr)",
         )
     return out
 
@@ -607,7 +614,7 @@ def str_to_deploy_key(s: str) -> Tuple[int, int]:
 
 
 def str_to_fortify_key(s: str) -> Tuple[int, ...]:
-    """Parse fortify key: 2-field oneshot or 3-field sequential ``(d_max, mission_hop[, a_curr])``."""
+    """Parse fortify key: 2-field oneshot or 3-field sequential ``(d_max, is_mission[, a_curr])``."""
     inner = s.strip()
     if inner.startswith("(") and inner.endswith(")"):
         inner = inner[1:-1]
@@ -633,7 +640,7 @@ def ucb_rank_bucket(score: float, anchor: float) -> int:
 @dataclass
 class MctslandBotPlayer:
     """
-    One-seat bot: Rookie for REINFORCE; MCTS tables for ATTACK / spree / deploy / fortify.
+    One-seat bot: Mctsland logic per ``mcts_decisions``; disabled types delegate to Rookie.
 
     Attributes:
         seat: Player index this bot controls.
@@ -649,7 +656,7 @@ class MctslandBotPlayer:
         placement_distribute: ``linear`` or ``softmax`` weights for one-shot DEPLOY/FORTIFY distribute.
         placement_softmax_temp: Temperature when ``placement_distribute == "softmax"``.
         fortify_placement: ``oneshot`` bulk UCB distribute (default) or ``sequential`` one army per action.
-        mcts_decisions: Enabled decision types (attack/spree/deploy/fortify); others use Rookie.
+        mcts_decisions: Enabled decision types (attack/spree/deploy/fortify/reinforce); others use Rookie.
         _rookie: Rookie delegate for shared reinforce attack planning.
         _episode_decisions: ``(table, key_str, seat)`` for each logged decision this game.
     """
@@ -865,6 +872,8 @@ class MctslandBotPlayer:
 
     def _reinforce(self, state: GameState, m: MapData, rng: np.random.Generator) -> Action:
         """Cascade consolidate top-3 attack attackers to ``ATT_UNITS_CAP``; ``EndReinforce``."""
+        if HISTORY_REINFORCE not in self.mcts_decisions:
+            return self._rookie._reinforce(state, m, rng)
         r = self._rookie
         if not self._consolidate_targets:
             self._consolidate_targets = self._build_consolidate_targets(state, m)
@@ -1090,10 +1099,10 @@ class MctslandBotPlayer:
     def _redistribute_key_tail(
         self, state: GameState, m: MapData, t: int, cluster: Set[int]
     ) -> Tuple[int, int]:
-        """Fortify history key: ``(d_max, mission_hop)``; other helpers not keyed."""
+        """Fortify history key: ``(d_max, is_mission)``; other helpers not keyed."""
         self._connectivity_mission_count(state, m, cluster)
         self._connectivity_all_other(cluster)
-        _mission_bucket_for_tile(m, state, self.seat, t)
+        mission_bucket = _mission_bucket_for_tile(m, state, self.seat, t)
         self._hand_coin_kind_for_defender(state, t)
         self._placement_att_cont(state, m, t)
         self._fortify_pool_rem_for_key(state)
@@ -1101,13 +1110,14 @@ class MctslandBotPlayer:
         def_neighbor_max = min(self._max_enemy_neighbor_units(state, m, t), 4)
         pool = self._fortify_pool_for_avg_key(state)
         self._fortify_pool_per_tile_bucket(pool, cluster)
-        mission_hop = self._mission_hop_distance(state, m, t, cluster)
-        return (def_neighbor_max, mission_hop)
+        self._mission_hop_distance(state, m, t, cluster)
+        is_mission = 1 if mission_bucket > 0 else 0
+        return (def_neighbor_max, is_mission)
 
     def _build_fortify_key(
         self, state: GameState, m: MapData, t: int
     ) -> Tuple[int, ...]:
-        """Oneshot: ``(d_max, mission_hop)``; sequential: ``(d_max, mission_hop, a_curr)``."""
+        """Oneshot: ``(d_max, is_mission)``; sequential: ``(d_max, is_mission, a_curr)``."""
         cluster = self._own_cluster_bfs(state, m, t)
         tail = self._redistribute_key_tail(state, m, t, cluster)
         if self.fortify_placement == "sequential":
