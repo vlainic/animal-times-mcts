@@ -68,13 +68,13 @@ above anchor).
 
 **Fortify state key** (FORTIFY place after strip)
 
-- **Oneshot** (2-tuple): ``(def_neighbor_max, pool_per_tile)`` — max **25** states
-  (``d_max`` 0..4 × ``pool_per_tile`` 0..4)
-- **Sequential** (3-tuple): ``(def_neighbor_max, pool_per_tile, a_curr)`` — max **125**
+- **Oneshot** (2-tuple): ``(def_neighbor_max, mission_hop)`` — max **25** states
+  (``d_max`` 0..4 × ``mission_hop`` -1..3)
+- **Sequential** (3-tuple): ``(def_neighbor_max, mission_hop, a_curr)`` — max **125**
   (same + ``a_curr`` = ``min(units[dst], 5)``)
 
-``pool_per_tile`` is ``floor(pool_rem / |cluster|)`` capped **0..4** — remaining armies to place
-after strip, averaged per cluster tile (:meth:`_fortify_pool_per_tile_bucket`). ``enemy_count``,
+``mission_hop`` is BFS hops within the fortify cluster to the nearest owned mission-relevant tile
+(:meth:`_mission_hop_distance`); **-1** if none in cluster. ``pool_per_tile``, ``enemy_count``,
 ``pool_rem`` 1..10 bucket, mission / coin / continent / connectivity helpers remain computed but omitted.
 
 **History JSON**
@@ -321,7 +321,7 @@ def _parse_fortify_history_table(raw: Any, *, warn: bool = False) -> HistoryTabl
         print(
             "warning: ignored",
             legacy,
-            "legacy fortify keys — retrain with (d_max, pool_per_tile) or (d_max, pool_per_tile, a_curr)",
+            "legacy fortify keys — retrain with (d_max, mission_hop) or (d_max, mission_hop, a_curr)",
         )
     return out
 
@@ -607,7 +607,7 @@ def str_to_deploy_key(s: str) -> Tuple[int, int]:
 
 
 def str_to_fortify_key(s: str) -> Tuple[int, ...]:
-    """Parse fortify key: 2-field oneshot or 3-field sequential ``(d_max, pool_per_tile[, a_curr])``."""
+    """Parse fortify key: 2-field oneshot or 3-field sequential ``(d_max, mission_hop[, a_curr])``."""
     inner = s.strip()
     if inner.startswith("(") and inner.endswith(")"):
         inner = inner[1:-1]
@@ -1010,6 +1010,38 @@ class MctslandBotPlayer:
             return int(state.pending_deploy_armies[self.seat])
         return 0
 
+    def _mission_hop_distance(
+        self, state: GameState, m: MapData, t: int, cluster: Set[int]
+    ) -> int:
+        """Hops within cluster to nearest owned mission tile; -1 if none; else min(dist, 3)."""
+        mission_tiles = [
+            tile
+            for tile in cluster
+            if _mission_bucket_for_tile(m, state, self.seat, tile) > 0
+        ]
+        if not mission_tiles:
+            return -1
+        dist: Dict[int, int] = {}
+        q: Deque[int] = deque()
+        for seed in mission_tiles:
+            if seed in dist:
+                continue
+            dist[seed] = 0
+            q.append(seed)
+        while q:
+            cur = q.popleft()
+            d = dist[cur]
+            if d >= 3:
+                continue
+            for nb in m.neighbors(cur):
+                if nb not in cluster or nb in dist:
+                    continue
+                dist[nb] = d + 1
+                q.append(nb)
+        if t not in dist:
+            return -1
+        return min(dist[t], 3)
+
     def _placement_att_cont(self, state: GameState, m: MapData, t: int) -> int:
         """``0`` if continent of ``t`` is fully owned; else bucket 1/2/3."""
         missing = continent_missing_for_territory(m, state.owners, self.seat, t)
@@ -1058,7 +1090,7 @@ class MctslandBotPlayer:
     def _redistribute_key_tail(
         self, state: GameState, m: MapData, t: int, cluster: Set[int]
     ) -> Tuple[int, int]:
-        """Fortify history key: ``(d_max, pool_per_tile)``; other helpers not keyed."""
+        """Fortify history key: ``(d_max, mission_hop)``; other helpers not keyed."""
         self._connectivity_mission_count(state, m, cluster)
         self._connectivity_all_other(cluster)
         _mission_bucket_for_tile(m, state, self.seat, t)
@@ -1068,13 +1100,14 @@ class MctslandBotPlayer:
         self._enemy_neighbor_count(state, m, t)
         def_neighbor_max = min(self._max_enemy_neighbor_units(state, m, t), 4)
         pool = self._fortify_pool_for_avg_key(state)
-        pool_per_tile = self._fortify_pool_per_tile_bucket(pool, cluster)
-        return (def_neighbor_max, pool_per_tile)
+        self._fortify_pool_per_tile_bucket(pool, cluster)
+        mission_hop = self._mission_hop_distance(state, m, t, cluster)
+        return (def_neighbor_max, mission_hop)
 
     def _build_fortify_key(
         self, state: GameState, m: MapData, t: int
     ) -> Tuple[int, ...]:
-        """Oneshot: ``(d_max, pool_per_tile)``; sequential: ``(d_max, pool_per_tile, a_curr)``."""
+        """Oneshot: ``(d_max, mission_hop)``; sequential: ``(d_max, mission_hop, a_curr)``."""
         cluster = self._own_cluster_bfs(state, m, t)
         tail = self._redistribute_key_tail(state, m, t, cluster)
         if self.fortify_placement == "sequential":
