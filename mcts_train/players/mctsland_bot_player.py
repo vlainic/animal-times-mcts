@@ -68,14 +68,14 @@ above anchor).
 
 **Fortify state key** (FORTIFY place after strip)
 
-- **Oneshot** (2-tuple): ``(def_neighbor_max, is_mission)`` — max **10** states
-  (``d_max`` 0..4 × ``is_mission`` 0/1)
-- **Sequential** (3-tuple): ``(def_neighbor_max, is_mission, a_curr)`` — max **50**
+- **Oneshot** (2-tuple): ``(def_neighbor_max, mission_bucket)`` — max **15** states
+  (``d_max`` 0..4 × ``mission_bucket`` 0/1/2)
+- **Sequential** (3-tuple): ``(def_neighbor_max, mission_bucket, a_curr)`` — max **75**
   (same + ``a_curr`` = ``min(units[dst], 5)``)
 
-``is_mission`` is ``1`` iff ``_mission_bucket_for_tile`` > 0 on the destination. ``mission_hop``,
-``pool_per_tile``, ``enemy_count``, ``pool_rem`` 1..10 bucket, mission / coin / continent /
-connectivity helpers remain computed but omitted.
+``mission_bucket`` is ``0``/``1``/``2`` from :func:`_mission_bucket_for_tile` on the destination
+(none / flexible / priority). ``is_mission``, ``mission_hop``, ``pool_per_tile``, ``enemy_count``,
+``pool_rem`` 1..10 bucket, coin / continent / connectivity helpers remain computed but omitted.
 
 **History JSON**
 
@@ -328,7 +328,7 @@ def _parse_fortify_history_table(raw: Any, *, warn: bool = False) -> HistoryTabl
         print(
             "warning: ignored",
             legacy,
-            "legacy fortify keys — retrain with (d_max, is_mission) or (d_max, is_mission, a_curr)",
+            "legacy fortify keys — retrain with (d_max, mission_bucket) or (d_max, mission_bucket, a_curr)",
         )
     return out
 
@@ -614,7 +614,7 @@ def str_to_deploy_key(s: str) -> Tuple[int, int]:
 
 
 def str_to_fortify_key(s: str) -> Tuple[int, ...]:
-    """Parse fortify key: 2-field oneshot or 3-field sequential ``(d_max, is_mission[, a_curr])``."""
+    """Parse fortify key: 2-field oneshot or 3-field sequential ``(d_max, mission_bucket[, a_curr])``."""
     inner = s.strip()
     if inner.startswith("(") and inner.endswith(")"):
         inner = inner[1:-1]
@@ -1099,7 +1099,7 @@ class MctslandBotPlayer:
     def _redistribute_key_tail(
         self, state: GameState, m: MapData, t: int, cluster: Set[int]
     ) -> Tuple[int, int]:
-        """Fortify history key: ``(d_max, is_mission)``; other helpers not keyed."""
+        """Fortify history key: ``(d_max, mission_bucket)``; other helpers not keyed."""
         self._connectivity_mission_count(state, m, cluster)
         self._connectivity_all_other(cluster)
         mission_bucket = _mission_bucket_for_tile(m, state, self.seat, t)
@@ -1111,13 +1111,13 @@ class MctslandBotPlayer:
         pool = self._fortify_pool_for_avg_key(state)
         self._fortify_pool_per_tile_bucket(pool, cluster)
         self._mission_hop_distance(state, m, t, cluster)
-        is_mission = 1 if mission_bucket > 0 else 0
-        return (def_neighbor_max, is_mission)
+        1 if mission_bucket > 0 else 0  # is_mission (computed, not keyed)
+        return (def_neighbor_max, mission_bucket)
 
     def _build_fortify_key(
         self, state: GameState, m: MapData, t: int
     ) -> Tuple[int, ...]:
-        """Oneshot: ``(d_max, is_mission)``; sequential: ``(d_max, is_mission, a_curr)``."""
+        """Oneshot: ``(d_max, mission_bucket)``; sequential: ``(d_max, mission_bucket, a_curr)``."""
         cluster = self._own_cluster_bfs(state, m, t)
         tail = self._redistribute_key_tail(state, m, t, cluster)
         if self.fortify_placement == "sequential":
